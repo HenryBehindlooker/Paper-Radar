@@ -23,7 +23,11 @@
 		"test": "vitest run",
 		"test:unit": "vitest",
 		"test:e2e": "playwright test",
-		"test:live": "LIVE_TESTS=1 LOG_LEVEL=debug vitest run tests/unit/sources/live.test.ts"
+		"test:live": "LIVE_TESTS=1 LOG_LEVEL=debug vitest run tests/unit/sources/live.test.ts",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
+		"worker": "tsx --env-file-if-exists=.env src/worker.ts",
+		"job": "tsx --env-file-if-exists=.env scripts/enqueue.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -32,6 +36,9 @@
 		"@sveltejs/kit": "^2.70.3",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@types/node": "^22.20.5",
+		"@types/pg": "8.23.1",
+		"drizzle-kit": "0.31.11",
+		"esbuild": "0.28.2",
 		"eslint": "^10.14.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.23.1",
@@ -41,15 +48,22 @@
 		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.8",
 		"tslib": "^2.9.1",
+		"tsx": "4.23.15",
 		"typescript": "~5.9.3",
 		"typescript-eslint": "^8.72.1",
 		"vite": "^7.3.7",
 		"vitest": "^4.1.12"
 	},
 	"dependencies": {
-		"fast-xml-parser": "5.11.2"
+		"drizzle-orm": "0.45.4",
+		"fast-xml-parser": "5.11.2",
+		"pg": "8.23.1",
+		"pg-boss": "12.38.0"
 	},
 	"overrides": {
-		"is-unsafe": "2.0.2"
+		"is-unsafe": "2.0.2",
+		"cron-parser": "5.10.2",
+		"serialize-error": "13.0.2",
+		"@opentelemetry/api": "1.9.1"
 	}
 }

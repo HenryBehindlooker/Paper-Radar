@@ -7,6 +7,15 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Hinzugefügt
 
+- Datenbank (PostgreSQL 16, Drizzle ORM): Schema mit Migrationen, Volltextsuche über
+  generierte `tsvector`-Spalte (Titel A, Abstract B) mit GIN-Index.
+- Dedup/Merge von Papern über alle IDs (DOI, arXiv, PMID, PMCID, OpenAlex, Europe PMC)
+  inkl. Zusammenführung von Preprint und Verlagsversion; Advisory-Locks gegen Dubletten.
+- Deduplizierte Abo-Anfragen (`source_queries`) und Fetch-Protokoll mit Status je Quelle.
+- pg-boss-Worker mit Queues und Zeitplänen: tägliche arXiv-RSS- und Query-Ingestion,
+  Backfill (30 Tage), Crossref-Ergänzung, Aufräumen (180 Tage).
+- Integrationstests gegen echte PostgreSQL; CI mit PostgreSQL-Service.
+
 - Datenquellen-Adapter mit gemeinsamem `PaperSource`-Interface und `NormalizedPaper`:
   arXiv (Atom-API + RSS), Europe PMC (REST), Crossref (DOI-Lookup, Batch per Filter),
   OpenAlex (nur Einzelabrufe, Credit-Protokoll).
