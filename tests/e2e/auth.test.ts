@@ -49,6 +49,12 @@ test('Magic-Link-Login, Abos verwalten und Konto löschen', async ({ page, reque
 	await expect(page).toHaveURL(/\/abos$/);
 	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Deine Abos');
 
+	// Startseite zeigt angemeldet den (noch leeren) persönlichen Feed
+	await page.goto('/');
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('Neu für dich');
+	await expect(page.getByText('Noch keine Treffer')).toBeVisible();
+	await page.goto('/abos');
+
 	// Session-Cookie: httpOnly, sameSite=lax
 	const cookies = await page.context().cookies();
 	const session = cookies.find((c) => c.name.endsWith('authjs.session-token'));

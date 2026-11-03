@@ -59,9 +59,11 @@ export const backfillStatusEnum = pgEnum('backfill_status', [
 
 /**
  * Volltext: Titel stark (A), Abstract schwächer (B) gewichtet. Konfiguration `english`,
- * da die Metadaten der Quellen ganz überwiegend englisch sind.
+ * da die Metadaten der Quellen ganz überwiegend englisch sind. Der indexierte Text ist
+ * begrenzt, weil ein tsvector höchstens 1 MB groß sein darf (der Abstract selbst wird
+ * vollständig gespeichert).
  */
-export const SEARCH_VECTOR_SQL: SQL = sql`setweight(to_tsvector('english'::regconfig, coalesce(title, '')), 'A') || setweight(to_tsvector('english'::regconfig, coalesce(abstract, '')), 'B')`;
+export const SEARCH_VECTOR_SQL: SQL = sql`setweight(to_tsvector('english'::regconfig, left(coalesce(title, ''), 2000)), 'A') || setweight(to_tsvector('english'::regconfig, left(coalesce(abstract, ''), 50000)), 'B')`;
 
 export const papers = pgTable(
 	'papers',
@@ -272,7 +274,9 @@ export const subscriptions = pgTable(
 		sourceQueryId: bigint('source_query_id', { mode: 'number' })
 			.notNull()
 			.references(() => sourceQueries.id),
-		createdAt: tstz('created_at').notNull().defaultNow()
+		createdAt: tstz('created_at').notNull().defaultNow(),
+		/** Erstes Matching gegen bereits vorhandene Paper erledigt? (null = ausstehend) */
+		initialMatchedAt: tstz('initial_matched_at')
 	},
 	(t) => [
 		uniqueIndex('subscriptions_user_query_key').on(t.userId, t.sourceQueryId),
@@ -289,8 +293,15 @@ export const matches = pgTable(
 		paperId: bigint('paper_id', { mode: 'number' })
 			.notNull()
 			.references(() => papers.id, { onDelete: 'cascade' }),
+		/** Score inkl. Aktualitäts-Abfall zum Zeitpunkt des Matchings. */
 		score: real('score').notNull(),
-		/** IDs der getroffenen Abos („Warum sehe ich das?“). */
+		/** Score ohne Aktualitäts-Abfall; der Feed rechnet den Abfall beim Lesen live. */
+		relevance: real('relevance').notNull().default(0),
+		/** Begründung je getroffenem Abo („Warum sehe ich das?“), siehe `MatchReason`. */
+		reasons: jsonb('reasons')
+			.notNull()
+			.default(sql`'[]'::jsonb`),
+		/** IDs der getroffenen Abos. */
 		subscriptionIds: bigint('subscription_ids', { mode: 'number' })
 			.array()
 			.notNull()
@@ -306,6 +317,13 @@ export const matches = pgTable(
 		index('matches_paper_idx').on(t.paperId)
 	]
 );
+
+/** Kleiner Schlüssel-Wert-Speicher für Job-Zustände (z. B. Matching-Wasserstand). */
+export const jobState = pgTable('job_state', {
+	key: text('key').primaryKey(),
+	value: jsonb('value').notNull(),
+	updatedAt: tstz('updated_at').notNull().defaultNow()
+});
 
 // ---------------------------------------------------------------------------
 // Protokoll

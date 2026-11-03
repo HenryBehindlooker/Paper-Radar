@@ -7,6 +7,18 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Hinzugefügt
 
+- Matching und Ranking: reine, getestete Score-Funktionen (Textrelevanz × Gewicht,
+  Autor-/Kategorie-Boost, Aktualitäts-Abfall mit konfigurierbarer Halbwertszeit),
+  Matching-Job mit Wasserstand (inkl. Überlappung gegen späte Commits), Erstzuordnung
+  neuer Abos (30 Tage), ein Treffer pro Person und Paper mit Begründungen.
+- Startseite zeigt angemeldet die Treffer mit „Warum sehe ich das?“ (Live-Sortierung).
+
+### Geändert
+
+- Volltextindex begrenzt den indexierten Text (Titel 2.000, Abstract 50.000 Zeichen),
+  da ein tsvector höchstens 1 MB groß sein darf; Abstracts werden weiterhin vollständig
+  gespeichert.
+
 - Anmeldung per E-Mail-Magic-Link (Auth.js, Drizzle-Adapter, Datenbank-Sessions) mit
   deutscher Anmelde-Mail ohne Tracking und Versand-Drosselung; Mailpit für Entwicklung/CI.
 - Abo-Verwaltung (`/abos`): Stichwort, arXiv-Kategorie (Auswahlliste aus der offiziellen

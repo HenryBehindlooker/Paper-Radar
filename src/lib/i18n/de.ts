@@ -15,6 +15,14 @@ export const de = {
 	'home.toSubscriptions': 'Zu deinen Abos',
 	'home.accountDeleted': 'Dein Konto und alle zugehörigen Daten wurden gelöscht.',
 
+	'feed.title': 'Neu für dich',
+	'feed.empty':
+		'Noch keine Treffer. Neue Paper zu deinen Abos erscheinen hier, sobald sie eingelesen und zugeordnet sind.',
+	'feed.noSubscriptions': 'Lege zuerst ein Abo an, damit hier passende Paper erscheinen.',
+	'feed.why': 'Warum sehe ich das?',
+	'feed.moreAuthors': 'u. a.',
+	'feed.score': 'Relevanz',
+
 	'login.title': 'Anmelden',
 	'login.intro':
 		'Gib deine E-Mail-Adresse ein. Du bekommst einen Anmeldelink – ohne Passwort. Neue Konten werden dabei automatisch angelegt.',

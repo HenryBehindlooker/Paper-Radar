@@ -15,6 +15,7 @@ import {
 	setupQueues
 } from './lib/server/jobs/queues';
 import { createLogger } from './lib/server/log';
+import { loadRankingConfig } from './lib/server/ranking/score';
 import { createSources } from './lib/server/sources/index';
 
 const log = createLogger('worker');
@@ -30,7 +31,8 @@ async function main(): Promise<void> {
 		db: database.db,
 		sources,
 		logger: log.child('jobs'),
-		now: () => new Date()
+		now: () => new Date(),
+		ranking: loadRankingConfig(process.env)
 	};
 
 	const boss = createBoss(url, 'worker');

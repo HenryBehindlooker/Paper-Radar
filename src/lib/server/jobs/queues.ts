@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { PgBoss, type Queue } from 'pg-boss';
 import type { Db } from '../db/index';
 import { sourceQueries } from '../db/schema';
+import { runMatching } from '../ranking/match';
 import type { JobContext } from './context';
 import {
 	backfillSourceQuery,
@@ -19,6 +20,7 @@ export const QUEUES = {
 	ingestQueries: 'ingest-queries-daily',
 	backfill: 'backfill',
 	enrichCrossref: 'enrich-crossref',
+	match: 'match',
 	cleanup: 'cleanup'
 } as const;
 
@@ -61,6 +63,14 @@ export const QUEUE_DEFINITIONS: Array<Queue> = [
 		retryBackoff: true,
 		expireInSeconds: 3600
 	},
+	{
+		name: QUEUES.match,
+		policy: 'stately',
+		retryLimit: 3,
+		retryDelay: 60,
+		retryBackoff: true,
+		expireInSeconds: 1800
+	},
 	{ name: QUEUES.cleanup, policy: 'stately', retryLimit: 1, expireInSeconds: 3600 }
 ];
 
@@ -72,6 +82,8 @@ export const SCHEDULES: Array<{ name: QueueName; cron: string }> = [
 	{ name: QUEUES.ingestQueries, cron: '43 5 * * *' },
 	{ name: QUEUES.ingestArxiv, cron: '17 7 * * 1-5' },
 	{ name: QUEUES.enrichCrossref, cron: '7 9 * * *' },
+	// Sicherheitsnetz; regulär läuft das Matching direkt nach jeder Ingestion.
+	{ name: QUEUES.match, cron: '37 */6 * * *' },
 	{ name: QUEUES.cleanup, cron: '27 3 * * *' }
 ];
 
@@ -125,9 +137,16 @@ export async function requestBackfill(boss: PgBoss, db: Db, sourceQueryId: numbe
 	});
 }
 
-/** Crossref-Ergänzung anstoßen (gebündelt: höchstens ein wartender Job). */
+/** Matching anstoßen (gebündelt: höchstens ein wartender Job; nur lokale DB-Arbeit). */
+export async function requestMatching(boss: PgBoss): Promise<void> {
+	await boss.send(QUEUES.match, null);
+}
+
+/** Nach neuer Ingestion: Matching und Crossref-Ergänzung anstoßen (gebündelt). */
 async function chainEnrichment(boss: PgBoss, newPaperIds: number[]): Promise<void> {
-	if (newPaperIds.length > 0) await boss.send(QUEUES.enrichCrossref, null);
+	if (newPaperIds.length === 0) return;
+	await requestMatching(boss);
+	await boss.send(QUEUES.enrichCrossref, null);
 }
 
 export async function registerWorkers(boss: PgBoss, ctx: JobContext): Promise<void> {
@@ -170,6 +189,10 @@ export async function registerWorkers(boss: PgBoss, ctx: JobContext): Promise<vo
 		const result = await enrichWithCrossref(ctx);
 		log.info('Crossref-Ergänzung', { ...result });
 		return result;
+	});
+
+	await boss.work(QUEUES.match, options, async () => {
+		return runMatching(ctx);
 	});
 
 	await boss.work(QUEUES.cleanup, options, async () => {

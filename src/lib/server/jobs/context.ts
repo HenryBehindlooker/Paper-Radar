@@ -1,5 +1,6 @@
 import type { Db } from '../db/index';
 import type { Logger } from '../log';
+import type { RankingConfig } from '../ranking/score';
 import type { ArxivSource } from '../sources/arxiv';
 import type { CrossrefSource } from '../sources/crossref';
 import type { PaperSource } from '../sources/types';
@@ -16,6 +17,7 @@ export interface JobContext {
 	sources: JobSources;
 	logger: Logger;
 	now: () => Date;
+	ranking?: RankingConfig;
 }
 
 export const DAY_MS = 86_400_000;

@@ -1,6 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { getBoss, getDb } from '$lib/server/app';
-import { requestBackfill } from '$lib/server/jobs/queues';
+import { requestBackfill, requestMatching } from '$lib/server/jobs/queues';
 import {
 	addSubscription,
 	listSubscriptions,
@@ -40,6 +40,8 @@ export const actions: Actions = {
 				id,
 				values
 			);
+			// Vorhandene Paper sofort dem neuen Abo zuordnen (lokal, ohne Upstream-Aufruf).
+			await requestMatching(await getBoss());
 			return { added: true, backfillRequested: result.backfillRequested };
 		} catch (e) {
 			if (e instanceof SubscriptionError) return fail(400, { error: e.message, values });

@@ -84,6 +84,30 @@ docs/DATA_SOURCES.md      Endpunkte, Limits, Lizenzen der Quellen
   Anmelde-Tokens, Abos, Treffer und Merkliste.
 - JSON: `GET /api/subscriptions` liefert die eigenen Abos mit Backfill-Status.
 
+## Ranking („Warum sehe ich das?“)
+
+Jedes Paper erscheint pro Person nur einmal, auch wenn mehrere Abos treffen. Der Score ist
+nachvollziehbar und wird nicht personalisiert gelernt:
+
+```
+score = ( Textrelevanz × Abo-Gewicht            (bestes Stichwort-Abo, ts_rank_cd normiert auf r/(r+1))
+        + 0,6 × Abo-Gewicht, falls ein Autor-Abo trifft
+        + 0,3 × Abo-Gewicht, falls ein Kategorie-Abo trifft )
+        × 0,5 ^ (Alter in Tagen / Halbwertszeit)  (RANKING_HALF_LIFE_DAYS, Standard 7)
+```
+
+- Titeltreffer zählen stärker als Abstract-Treffer (tsvector-Gewichte A bzw. B).
+- Gespeichert wird die Relevanz ohne Abfall. Der Feed rechnet den Aktualitäts-Abfall beim
+  Lesen live, damit ältere Treffer mit der Zeit korrekt nach hinten rutschen.
+- Zu jedem Treffer werden die getroffenen Abos gespeichert und im Feed unter
+  „Warum sehe ich das?“ angezeigt, z. B. „Stichwort „crispr“ im Titel“.
+- Matching-Job (`match`): Er läuft nach jeder Ingestion und wenn jemand ein neues Abo anlegt,
+  zusätzlich alle 6 Stunden. Neue Paper werden gegen alle Abos geprüft, neue Abos gegen die
+  vorhandenen Paper der letzten 30 Tage. Jedes deduplizierte Query wird nur einmal ausgewertet.
+  Dabei sind ausschließlich lokale Datenbankabfragen im Spiel, keine Upstream-Aufrufe.
+- Autor-Abos: ORCID exakt, Namen ohne Diakritika und auch mit abgekürzten Vornamen
+  („Rui Yang“ trifft „R. Yang“).
+
 ## Datenbank & Jobs
 
 - **Schema** (`src/lib/server/db/schema.ts`): `papers` (mit generierter `tsvector`-Spalte,
