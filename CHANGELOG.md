@@ -7,6 +7,14 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Hinzugefügt
 
+- Anmeldung per E-Mail-Magic-Link (Auth.js, Drizzle-Adapter, Datenbank-Sessions) mit
+  deutscher Anmelde-Mail ohne Tracking und Versand-Drosselung; Mailpit für Entwicklung/CI.
+- Abo-Verwaltung (`/abos`): Stichwort, arXiv-Kategorie (Auswahlliste aus der offiziellen
+  Taxonomie), Autor:in (Name/ORCID), Gewicht; Backfill-Job mit Live-Fortschritt.
+- Konto-Seite mit vollständiger Löschung aller personenbezogenen Daten (DSGVO).
+- Zugriffsschutz per Hook, Sicherheits-Header, JSON-API `GET /api/subscriptions`.
+- E2E-Test für Login, Abo-Verwaltung und Konto-Löschung (Playwright + Mailpit).
+
 - Datenbank (PostgreSQL 16, Drizzle ORM): Schema mit Migrationen, Volltextsuche über
   generierte `tsvector`-Spalte (Titel A, Abstract B) mit GIN-Index.
 - Dedup/Merge von Papern über alle IDs (DOI, arXiv, PMID, PMCID, OpenAlex, Europe PMC)

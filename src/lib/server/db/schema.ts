@@ -159,15 +159,66 @@ export const paperAuthors = pgTable(
 // Nutzer:innen & Abos
 // ---------------------------------------------------------------------------
 
-/** Es wird ausschließlich die E-Mail-Adresse gespeichert (Datenschutz). */
+/**
+ * Es wird ausschließlich die E-Mail-Adresse gespeichert (Datenschutz).
+ * `name` und `image` verlangt der Auth.js-Drizzle-Adapter; sie bleiben beim
+ * E-Mail-Login immer leer.
+ */
 export const users = pgTable('users', {
 	id: text('id')
 		.primaryKey()
 		.default(sql`gen_random_uuid()::text`),
 	email: text('email').notNull().unique(),
 	emailVerified: tstz('email_verified'),
+	name: text('name'),
+	image: text('image'),
 	createdAt: tstz('created_at').notNull().defaultNow()
 });
+
+/** Von Auth.js verlangt (OAuth-Konten); beim reinen E-Mail-Login leer. */
+export const accounts = pgTable(
+	'accounts',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		type: text('type').notNull(),
+		provider: text('provider').notNull(),
+		providerAccountId: text('provider_account_id').notNull(),
+		refresh_token: text('refresh_token'),
+		access_token: text('access_token'),
+		expires_at: integer('expires_at'),
+		token_type: text('token_type'),
+		scope: text('scope'),
+		id_token: text('id_token'),
+		session_state: text('session_state')
+	},
+	(t) => [primaryKey({ columns: [t.provider, t.providerAccountId] })]
+);
+
+/** Datenbank-Sessions (Cookie enthält nur das zufällige Session-Token). */
+export const sessions = pgTable(
+	'sessions',
+	{
+		sessionToken: text('session_token').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		expires: tstz('expires').notNull()
+	},
+	(t) => [index('sessions_user_idx').on(t.userId)]
+);
+
+/** Magic-Link-Tokens (Auth.js speichert nur einen Hash des Tokens). */
+export const verificationTokens = pgTable(
+	'verification_tokens',
+	{
+		identifier: text('identifier').notNull(),
+		token: text('token').notNull(),
+		expires: tstz('expires').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.identifier, t.token] })]
+);
 
 /**
  * Dedupliziertes Abo-Query: gleiche Anfragen mehrerer Nutzer:innen werden

@@ -17,16 +17,19 @@ ohne Algorithmus-Blase**, mit eigenem RSS-Feed und Wochen-Mail.
 
 ## Quickstart (lokal)
 
-Voraussetzungen: Node.js ≥ 22.12, PostgreSQL 16 (z. B. per Docker).
+Voraussetzungen: Node.js ≥ 22.12, Docker (für PostgreSQL 16 und Mailpit).
 
 ```bash
-cp .env.example .env
-docker compose -f docker-compose.dev.yml up -d   # PostgreSQL mit Dev- und Testdatenbank
+cp .env.example .env                             # danach AUTH_SECRET setzen: openssl rand -base64 32
+docker compose -f docker-compose.dev.yml up -d   # PostgreSQL + Mailpit
 npm install
 npm run db:migrate                               # Schema anlegen
 npm run worker                                   # Hintergrund-Jobs (separates Terminal)
-npm run dev                                      # Web-App
+npm run dev                                      # Web-App: http://localhost:5173
 ```
+
+Anmelden: Auf `/login` die E-Mail-Adresse eingeben. Den Magic-Link findest du lokal in
+**Mailpit** unter http://localhost:8025. Dort landen alle Mails, nichts geht nach außen.
 
 ## Entwicklung
 
@@ -45,6 +48,9 @@ npm run dev                                      # Web-App
 
 Die Integrationstests brauchen `TEST_DATABASE_URL` (siehe `.env.example`). Diese Datenbank
 wird bei jedem Lauf **geleert**. Ohne die Variable werden die Integrationstests übersprungen.
+Die E2E-Tests starten die App gegen `paperradar_e2e` (überschreibbar mit `E2E_DATABASE_URL`).
+Den Magic-Link lesen sie über die Mailpit-API (`E2E_MAILPIT_URL`, Standard
+`http://127.0.0.1:8025`).
 
 ### Projektstruktur
 
@@ -59,6 +65,24 @@ src/routes/feed/          RSS/Atom-Feeds
 tests/fixtures/           Echte API-Antworten für Tests
 docs/DATA_SOURCES.md      Endpunkte, Limits, Lizenzen der Quellen
 ```
+
+## Anmeldung & Abos
+
+- **Login per Magic-Link** (Auth.js, Nodemailer-Provider): kein Passwort. Neue Konten entstehen
+  beim ersten Login. Der Link ist eine Stunde gültig und nur einmal verwendbar. Es gibt höchstens
+  3 Anmelde-Mails pro Adresse in 15 Minuten. Bei Drosselung erscheint dieselbe Antwortseite,
+  damit sich nicht prüfen lässt, ob eine Adresse existiert.
+- **Sessions** liegen in der Datenbank. Das Cookie enthält nur ein zufälliges Token
+  (`httpOnly`, `sameSite=lax`, `secure` bei HTTPS-`ORIGIN`).
+- **Abos** (`/abos`):
+  - Stichwort in `websearch_to_tsquery`-Syntax, arXiv-Kategorie aus der offiziellen Taxonomie
+    oder Autor:in per Name bzw. ORCID.
+  - Gewicht wählbar: weniger, normal, mehr, viel mehr. Höchstens 50 Abos pro Konto.
+  - Ein neues Abo reiht einen Backfill-Job ein. Das passiert nur, wenn das deduplizierte Query
+    noch nie nachgeladen wurde. Der Fortschritt aktualisiert sich live auf der Seite.
+- **Konto löschen** (`/konto`, DSGVO) entfernt sofort die E-Mail-Adresse, Sessions,
+  Anmelde-Tokens, Abos, Treffer und Merkliste.
+- JSON: `GET /api/subscriptions` liefert die eigenen Abos mit Backfill-Status.
 
 ## Datenbank & Jobs
 
