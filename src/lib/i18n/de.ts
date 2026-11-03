@@ -127,6 +127,34 @@ export const de = {
 	'account.email': 'Angemeldet als',
 	'account.stored':
 		'Gespeichert sind: deine E-Mail-Adresse, deine Abos sowie deine Treffer, Merkliste und Gelesen-Markierungen. Sonst nichts.',
+	'account.feed.title': 'Persönlicher Feed (RSS/Atom)',
+	'account.feed.intro':
+		'Lies deine Treffer in jedem Feed-Reader. Die Adresse ist geheim: Wer sie kennt, kann deine Treffer lesen. Du kannst sie jederzeit erneuern.',
+	'account.feed.enable': 'Feed aktivieren',
+	'account.feed.rss': 'RSS-Adresse',
+	'account.feed.atom': 'Atom-Adresse',
+	'account.feed.perSubscription': 'Feeds je Abo',
+	'account.feed.opml': 'Alle Feeds als OPML exportieren',
+	'account.feed.rotate': 'Neue Adresse erzeugen',
+	'account.feed.rotate.confirm':
+		'Neue Adresse erzeugen? Die bisherige funktioniert danach nicht mehr.',
+	'account.feed.rotated': 'Neue Feed-Adresse erzeugt – die alte ist ungültig.',
+	'account.feed.disable': 'Feed deaktivieren',
+	'account.digest.title': 'Wochen-Mail',
+	'account.digest.intro':
+		'Jeden Montag um 7 Uhr die zehn wichtigsten neuen Paper der Woche. Ohne Treffer keine Mail. Jede Mail enthält einen Abmeldelink.',
+	'account.digest.enabled': 'Wochen-Mail ist eingeschaltet.',
+	'account.digest.disabled': 'Wochen-Mail ist ausgeschaltet.',
+	'account.digest.enable': 'Wochen-Mail einschalten',
+	'account.digest.disable': 'Wochen-Mail ausschalten',
+
+	'unsubscribe.title': 'Wochen-Mail abbestellen',
+	'unsubscribe.confirm': 'Möchtest du die Wochen-Mail von Paper-Radar abbestellen?',
+	'unsubscribe.submit': 'Abbestellen',
+	'unsubscribe.done': 'Du bekommst keine Wochen-Mail mehr.',
+	'unsubscribe.invalid': 'Dieser Abmeldelink ist ungültig oder das Konto existiert nicht mehr.',
+	'unsubscribe.settings': 'Zu den Einstellungen',
+
 	'account.delete.title': 'Konto löschen',
 	'account.delete.text':
 		'Löscht sofort und unwiderruflich dein Konto mit allen Abos, Treffern und deiner Merkliste.',

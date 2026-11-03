@@ -16,9 +16,39 @@ import {
 } from './lib/server/jobs/queues';
 import { createLogger } from './lib/server/log';
 import { loadRankingConfig } from './lib/server/ranking/score';
+import { createTransport, loadSmtpConfig } from './lib/server/mail';
+import { deriveKey } from './lib/server/tokens';
 import { createSources } from './lib/server/sources/index';
 
 const log = createLogger('worker');
+
+/** Versandkonfiguration der Wochen-Mail aus der Umgebung (fehlt etwas → kein Versand). */
+function digestConfig(): Pick<JobContext, 'digest'> {
+	const origin = process.env.ORIGIN?.trim();
+	const secret = process.env.AUTH_SECRET?.trim();
+	if (!origin || !secret) {
+		log.warn('Wochen-Mail deaktiviert: ORIGIN und AUTH_SECRET müssen gesetzt sein');
+		return {};
+	}
+	const smtp = loadSmtpConfig(process.env);
+	const transport = createTransport(smtp);
+	return {
+		digest: {
+			origin,
+			key: deriveKey(secret, 'digest-unsubscribe'),
+			send: async (mail) => {
+				await transport.sendMail({
+					from: smtp.from,
+					to: mail.to,
+					subject: mail.subject,
+					text: mail.text,
+					html: mail.html,
+					headers: mail.headers
+				});
+			}
+		}
+	};
+}
 
 async function main(): Promise<void> {
 	const url = requireDatabaseUrl();
@@ -32,7 +62,8 @@ async function main(): Promise<void> {
 		sources,
 		logger: log.child('jobs'),
 		now: () => new Date(),
-		ranking: loadRankingConfig(process.env)
+		ranking: loadRankingConfig(process.env),
+		...digestConfig()
 	};
 
 	const boss = createBoss(url, 'worker');

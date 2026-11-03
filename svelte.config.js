@@ -5,7 +5,10 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
 	preprocess: vitePreprocess(),
 	kit: {
-		adapter: adapter({ out: 'build' })
+		adapter: adapter({ out: 'build' }),
+		// Eingebaute Origin-Prüfung aus; sie wird in src/hooks.server.ts (src/lib/server/csrf.ts)
+		// identisch nachgebildet – mit einer Ausnahme für die Ein-Klick-Abmeldung (RFC 8058).
+		csrf: { trustedOrigins: ['*'] }
 	}
 };
 

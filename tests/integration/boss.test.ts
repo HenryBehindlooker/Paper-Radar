@@ -68,6 +68,8 @@ describe.skipIf(!hasTestDb)('pg-boss: Queues, Zeitpläne, Worker', () => {
 		});
 		expect(byName[QUEUES.ingestQueries]).toMatchObject({ cron: '43 5 * * *' });
 		expect(byName[QUEUES.cleanup]).toBeDefined();
+		expect(byName[QUEUES.weeklyDigest]).toMatchObject({ cron: '0 7 * * 1', timezone: SCHEDULE_TZ });
+		expect(byName[QUEUES.match]).toBeDefined();
 	});
 
 	it('Backfill-Anfragen werden pro Query zusammengefasst und vom Worker abgearbeitet', async () => {

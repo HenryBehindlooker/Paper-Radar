@@ -174,7 +174,15 @@ export const users = pgTable('users', {
 	emailVerified: tstz('email_verified'),
 	name: text('name'),
 	image: text('image'),
-	createdAt: tstz('created_at').notNull().defaultNow()
+	createdAt: tstz('created_at').notNull().defaultNow(),
+	/**
+	 * Öffentliche ID des persönlichen Feeds (null = deaktiviert). Die Feed-URL enthält
+	 * zusätzlich eine HMAC-Signatur, die nicht gespeichert wird.
+	 */
+	feedId: text('feed_id').unique(),
+	/** Wochen-Mail abonniert (Opt-in). */
+	weeklyDigest: boolean('weekly_digest').notNull().default(false),
+	lastDigestSentAt: tstz('last_digest_sent_at')
 });
 
 /** Von Auth.js verlangt (OAuth-Konten); beim reinen E-Mail-Login leer. */

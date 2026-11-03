@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { PgBoss, type Queue } from 'pg-boss';
 import type { Db } from '../db/index';
 import { sourceQueries } from '../db/schema';
+import { runWeeklyDigest } from '../digest';
 import { runMatching } from '../ranking/match';
 import type { JobContext } from './context';
 import {
@@ -21,6 +22,7 @@ export const QUEUES = {
 	backfill: 'backfill',
 	enrichCrossref: 'enrich-crossref',
 	match: 'match',
+	weeklyDigest: 'weekly-digest',
 	cleanup: 'cleanup'
 } as const;
 
@@ -71,6 +73,14 @@ export const QUEUE_DEFINITIONS: Array<Queue> = [
 		retryBackoff: true,
 		expireInSeconds: 1800
 	},
+	{
+		name: QUEUES.weeklyDigest,
+		policy: 'stately',
+		retryLimit: 3,
+		retryDelay: 600,
+		retryBackoff: true,
+		expireInSeconds: 3600
+	},
 	{ name: QUEUES.cleanup, policy: 'stately', retryLimit: 1, expireInSeconds: 3600 }
 ];
 
@@ -84,7 +94,9 @@ export const SCHEDULES: Array<{ name: QueueName; cron: string }> = [
 	{ name: QUEUES.enrichCrossref, cron: '7 9 * * *' },
 	// Sicherheitsnetz; regulär läuft das Matching direkt nach jeder Ingestion.
 	{ name: QUEUES.match, cron: '37 */6 * * *' },
-	{ name: QUEUES.cleanup, cron: '27 3 * * *' }
+	{ name: QUEUES.cleanup, cron: '27 3 * * *' },
+	// Montag 7:00 Uhr (Europe/Berlin), wie gefordert exakt zur vollen Stunde.
+	{ name: QUEUES.weeklyDigest, cron: '0 7 * * 1' }
 ];
 
 export interface BackfillJobData {
@@ -193,6 +205,20 @@ export async function registerWorkers(boss: PgBoss, ctx: JobContext): Promise<vo
 
 	await boss.work(QUEUES.match, options, async () => {
 		return runMatching(ctx);
+	});
+
+	await boss.work(QUEUES.weeklyDigest, options, async () => {
+		if (!ctx.digest) {
+			log.warn('Wochen-Mail übersprungen: ORIGIN oder AUTH_SECRET nicht gesetzt');
+			return { skipped: true };
+		}
+		return runWeeklyDigest({
+			db: ctx.db,
+			logger: log,
+			now: ctx.now,
+			halfLifeDays: ctx.ranking?.halfLifeDays ?? 7,
+			...ctx.digest
+		});
 	});
 
 	await boss.work(QUEUES.cleanup, options, async () => {

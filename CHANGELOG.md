@@ -7,6 +7,12 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Hinzugefügt
 
+- Persönlicher RSS 2.0/Atom 1.0-Feed unter geheimer, rotierbarer URL (HMAC-signiert, nur
+  Feed-ID gespeichert), Feed je Abo, Caching per Last-Modified/304; OPML-Export.
+- Wochen-Mail (Opt-in, Montag 7 Uhr Europe/Berlin): Top-10 der Woche mit Begründung,
+  idempotenter Job, signierter Abmeldelink und RFC-8058-Ein-Klick-Abmeldung.
+- Eigener CSRF-Hook (gleiche Regeln wie SvelteKit) mit Ausnahme nur für die Abmeldung.
+
 - Oberfläche: Feed-Karten mit Abstract, Begründung und Aktionen (gelesen, merken,
   ausblenden; auch ohne JavaScript), Filter und Seiten; Suche über die eigene Datenbank;
   Merkliste; Paper-Detailseite mit Links aus allen Kennungen (PDF nur als Verweis);

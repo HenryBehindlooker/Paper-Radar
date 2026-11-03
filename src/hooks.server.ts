@@ -1,6 +1,7 @@
 import { json, redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { handle as authentication } from '$lib/server/auth';
+import { isForbiddenCrossSiteRequest } from '$lib/server/csrf';
 
 /** Seiten und APIs, die eine Anmeldung erfordern. */
 const PROTECTED_PAGES = ['/abos', '/konto', '/suche', '/merkliste', '/paper'];
@@ -35,4 +36,15 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-export const handle = sequence(authentication, authorization, securityHeaders);
+/** CSRF-Schutz für Formular-POSTs (siehe src/lib/server/csrf.ts). */
+const csrf: Handle = async ({ event, resolve }) => {
+	if (isForbiddenCrossSiteRequest(event.request, event.url)) {
+		const message = `Cross-site ${event.request.method} form submissions are forbidden`;
+		return event.request.headers.get('accept') === 'application/json'
+			? json({ message }, { status: 403 })
+			: new Response(message, { status: 403 });
+	}
+	return resolve(event);
+};
+
+export const handle = sequence(csrf, authentication, authorization, securityHeaders);

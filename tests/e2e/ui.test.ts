@@ -66,12 +66,11 @@ const pressed = (button: Locator) => expect(button).toHaveAttribute('aria-presse
 
 test('Feed-Karten, Aktionen, Merkliste, Detail, BibTeX, Suche', async ({ page, request }) => {
 	await login(page, request);
-	await page.getByLabel('arXiv-Kategorie').check();
-	await page.getByLabel('Kategorie', { exact: true }).selectOption('cs.DL');
+	// Eindeutiges Stichwort: unabhängig von Daten früherer Testläufe in der E2E-Datenbank.
+	const tag = `t${Date.now()}`;
+	await page.getByLabel('Suchbegriffe').fill(tag);
 	await page.getByRole('button', { name: 'Abo hinzufügen' }).click();
 	await expect(page.getByTestId('subscription')).toHaveCount(1);
-
-	const tag = `t${Date.now()}`;
 	await seedPapers(tag);
 
 	await page.goto('/');
@@ -91,7 +90,7 @@ test('Feed-Karten, Aktionen, Merkliste, Detail, BibTeX, Suche', async ({ page, r
 	await expect(first).toContainText('Second paragraph');
 	await expect(second.getByText('Abstract', { exact: true })).toHaveCount(0);
 	await first.getByText('Warum sehe ich das?').click();
-	await expect(first.getByRole('listitem')).toHaveText(['arXiv-Kategorie cs.DL']);
+	await expect(first.getByRole('listitem')).toHaveText([`Stichwort „${tag}“ im Titel`]);
 
 	// Gelesen → Filter „Ungelesen“
 	await first.getByRole('button', { name: 'Gelesen' }).click();
@@ -178,11 +177,10 @@ test('Feed-Karten, Aktionen, Merkliste, Detail, BibTeX, Suche', async ({ page, r
 
 test('Aktionen funktionieren auch ohne JavaScript', async ({ browser, page, request }) => {
 	await login(page, request);
-	await page.getByLabel('arXiv-Kategorie').check();
-	await page.getByLabel('Kategorie', { exact: true }).selectOption('cs.DL');
+	const tag = `nojs${Date.now()}`;
+	await page.getByLabel('Suchbegriffe').fill(tag);
 	await page.getByRole('button', { name: 'Abo hinzufügen' }).click();
 	await expect(page.getByTestId('subscription')).toHaveCount(1);
-	const tag = `nojs${Date.now()}`;
 	await seedPapers(tag);
 
 	const context = await browser.newContext({

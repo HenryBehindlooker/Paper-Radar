@@ -100,6 +100,30 @@ docs/DATA_SOURCES.md      Endpunkte, Limits, Lizenzen der Quellen
   über CSS-Variablen (Auswahl nur im Browser gespeichert). Es werden keine Ressourcen von
   Drittanbietern geladen.
 
+## Feeds & Wochen-Mail
+
+- **Persönlicher RSS/Atom-Feed** (unter „Konto“ aktivierbar): Die Adresse ist
+  `/feed/<feedId>.<signatur>/rss.xml` bzw. `atom.xml`. Gespeichert wird nur die zufällige
+  `feedId`. Die Signatur ist ein HMAC mit einem aus `AUTH_SECRET` abgeleiteten Schlüssel.
+  „Neue Adresse erzeugen“ macht die alte sofort ungültig. Zusätzlich gibt es einen Feed je Abo
+  (`?abo=<id>`).
+  - Feed-Abrufe brauchen keine Anmeldung, die Adresse ist das Geheimnis.
+  - Abrufe werden mit `Last-Modified` und `304` gecacht und tragen `noindex`.
+  - Ausgeblendete Treffer erscheinen nicht.
+- **OPML-Export** (`/konto/opml`): Gesamtfeed plus ein Feed je Abo, zum Import in Feed-Reader.
+- **Wochen-Mail**:
+  - Opt-in unter „Konto“, Versand Montag 7:00 (Europe/Berlin), Job `weekly-digest`.
+  - Inhalt sind die Top-10 der Treffer der letzten 7 Tage nach Live-Score, mit Begründung.
+    Ohne Treffer kommt keine Mail.
+  - Der Job ist idempotent: Er verschickt höchstens eine Mail pro Person in 6 Tagen.
+  - Jede Mail hat einen signierten Abmeldelink. Ein `GET` darauf ändert nichts, weil
+    Link-Scanner Links automatisch öffnen. Abgemeldet wird erst per Button oder per
+    Ein-Klick-POST nach RFC 8058 (`List-Unsubscribe` + `List-Unsubscribe-Post`).
+  - Der Worker braucht dafür `ORIGIN`, `AUTH_SECRET` und die SMTP-Variablen.
+- **CSRF**: Für die Ein-Klick-Abmeldung ist die eingebaute Origin-Prüfung von SvelteKit durch
+  eine identische eigene Prüfung ersetzt (`src/lib/server/csrf.ts`). Die einzige Ausnahme ist
+  `POST /abmelden/<token>`.
+
 ## Ranking („Warum sehe ich das?“)
 
 Jedes Paper erscheint pro Person nur einmal, auch wenn mehrere Abos treffen. Der Score ist

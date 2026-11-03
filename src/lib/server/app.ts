@@ -3,6 +3,7 @@ import type { PgBoss } from 'pg-boss';
 import { createDatabase, type Database } from './db/index';
 import { createBoss, setupQueues } from './jobs/queues';
 import { createLogger } from './log';
+import { deriveKey } from './tokens';
 
 /**
  * Prozessweite Dienste der Web-App. Die App spricht nie mit Upstream-APIs –
@@ -42,4 +43,20 @@ export function getBoss(): Promise<PgBoss> {
 		throw error;
 	});
 	return bossPromise;
+}
+
+/** Öffentliche Basis-URL der Instanz (für Feed- und Abmelde-Links). */
+export function appOrigin(fallback: string): string {
+	return (env.ORIGIN?.trim() || fallback).replace(/\/$/, '');
+}
+
+let keys: { feed: Buffer; unsubscribe: Buffer } | undefined;
+
+/** Aus AUTH_SECRET abgeleitete, zweckgebundene Schlüssel. */
+export function appKeys(): { feed: Buffer; unsubscribe: Buffer } {
+	keys ??= {
+		feed: deriveKey(env.AUTH_SECRET ?? '', 'feed'),
+		unsubscribe: deriveKey(env.AUTH_SECRET ?? '', 'digest-unsubscribe')
+	};
+	return keys;
 }

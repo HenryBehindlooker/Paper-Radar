@@ -102,8 +102,12 @@
 			Ressourcen von Drittanbietern. Mails enthalten keine Tracking-Pixel.
 		</li>
 		<li>
-			<strong>E-Mails</strong> erhältst du nur für die Anmeldung (und, wenn du sie einschaltest, für die
-			Wochen-Mail).
+			<strong>E-Mails</strong> erhältst du nur für die Anmeldung und – nur wenn du sie einschaltest –
+			als Wochen-Mail. Jede Wochen-Mail enthält einen Abmeldelink.
+		</li>
+		<li>
+			<strong>Persönlicher Feed</strong>: Die geheime Feed-Adresse ist standardmäßig aus. Wer sie
+			kennt, kann deine Treffer lesen; du kannst sie jederzeit erneuern oder abschalten.
 		</li>
 		<li>
 			<strong>Löschen</strong>: Unter „Konto“ kannst du dein Konto jederzeit sofort mit allen Daten

@@ -1,4 +1,5 @@
 import type { Db } from '../db/index';
+import type { DigestContext } from '../digest';
 import type { Logger } from '../log';
 import type { RankingConfig } from '../ranking/score';
 import type { ArxivSource } from '../sources/arxiv';
@@ -18,6 +19,8 @@ export interface JobContext {
 	logger: Logger;
 	now: () => Date;
 	ranking?: RankingConfig;
+	/** Versand der Wochen-Mail; fehlt die Konfiguration (ORIGIN/AUTH_SECRET), wird übersprungen. */
+	digest?: Pick<DigestContext, 'origin' | 'key' | 'send'>;
 }
 
 export const DAY_MS = 86_400_000;
