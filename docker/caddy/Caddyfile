@@ -1,0 +1,21 @@
+# Reverse-Proxy mit automatischem HTTPS (Let's Encrypt; für „localhost“ eine lokale CA).
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	reverse_proxy app:3000 {
+		health_uri /api/health
+		health_interval 30s
+	}
+
+	# Kein Zugriffs-Log: keine IP-Adressen speichern (Datenschutz).
+	log {
+		output discard
+	}
+}

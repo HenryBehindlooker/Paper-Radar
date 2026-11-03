@@ -14,7 +14,7 @@
 	},
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "vite build && node scripts/build-worker.mjs",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -27,7 +27,9 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
 		"worker": "tsx --env-file-if-exists=.env src/worker.ts",
-		"job": "tsx --env-file-if-exists=.env scripts/enqueue.ts"
+		"job": "tsx --env-file-if-exists=.env scripts/enqueue.ts",
+		"start": "node build",
+		"start:worker": "node dist/worker.js"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

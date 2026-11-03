@@ -7,7 +7,14 @@ import svelteConfig from './svelte.config.js';
 
 export default ts.config(
 	{
-		ignores: ['build/', '.svelte-kit/', 'node_modules/', 'test-results/', 'playwright-report/']
+		ignores: [
+			'build/',
+			'dist/',
+			'.svelte-kit/',
+			'node_modules/',
+			'test-results/',
+			'playwright-report/'
+		]
 	},
 	js.configs.recommended,
 	...ts.configs.recommended,

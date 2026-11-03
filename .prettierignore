@@ -7,3 +7,4 @@ tests/fixtures/
 test-results/
 playwright-report/
 LICENSE
+dist/

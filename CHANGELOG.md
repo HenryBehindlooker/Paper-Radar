@@ -5,7 +5,22 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0] – 2026-11-03
+
+Erste vollständige Version.
+
 ### Hinzugefügt
+
+- Betrieb mit Docker: Multi-Stage-Dockerfile (ein Image für App, Worker und Migration,
+  läuft als Nicht-Root), `docker-compose.yml` mit PostgreSQL, Migrationsdienst, App,
+  Worker, Caddy (automatisches HTTPS, ohne Zugriffs-Logs) und Backup-Dienst; Mailpit als
+  optionales Profil.
+- Nächtliche Backups (`pg_dump`, 14 Tage Aufbewahrung) mit Wiederherstellungs-Skript.
+- `/api/health` mit Datenbank-, Queue- (Worker-Herzschlag, Warteschlangen) und Quellenstatus;
+  503 bei DB-/Queue-Ausfall, „degraded“ bei Quellenausfall.
+- Worker und CLI-Skripte als Produktions-Bundle (esbuild); CI baut das Docker-Image.
+- README neu gegliedert (Screenshot, Docker- und Entwicklungs-Schnellstart, Konfiguration,
+  Betrieb), Architektur nach `docs/ARCHITECTURE.md`, `CONTRIBUTING.md`.
 
 - OpenAlex-Anreicherung (wöchentlich): Zitationszahlen und Autoren-IDs für gemerkte und gut
   gerankte Paper per Einzelabruf; Credit-/Request-Protokoll je UTC-Tag, konfigurierbares

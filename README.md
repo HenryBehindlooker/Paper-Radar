@@ -1,225 +1,236 @@
 # Paper-Radar
 
-Abonniere Themen, arXiv-Kategorien und Autoren und bekomme täglich einen
+Abonniere Themen, arXiv-Kategorien und Autor:innen und bekomme täglich einen
 nachvollziehbar gerankten Feed neuer wissenschaftlicher Paper – **ohne Tracking,
 ohne Algorithmus-Blase**, mit eigenem RSS-Feed und Wochen-Mail.
 
-> Status: in Entwicklung (Phase 0 – Setup). Abschnitte mit _TODO_ werden in
-> späteren Phasen ergänzt.
+![Feed mit „Warum sehe ich das?“ und Aktionen](docs/screenshot.png)
 
-## Features (geplant)
+## Features
 
-- Abos auf Stichwörter (Postgres-Websuche-Syntax), arXiv-Kategorien und Autor:innen (Name/ORCID)
-- Täglicher Feed mit transparentem Ranking („Warum sehe ich das?“)
-- Merkliste, Suche, BibTeX-Export
-- Persönlicher RSS/Atom-Feed unter geheimer URL, OPML-Export, Wochen-Mail
-- Quellen: arXiv, Europe PMC, Crossref, OpenAlex (nur Anreicherung)
+- **Abos** auf Stichwörter (Postgres-Websuche-Syntax: `"phrase"`, `or`, `-ausschließen`),
+  arXiv-Kategorien (Auswahlliste aus der offiziellen Taxonomie) und Autor:innen (Name oder ORCID).
+  Neue Abos laden die Paper der letzten 30 Tage nach.
+- **Täglicher Feed** mit offengelegtem Ranking (Textrelevanz × Gewicht + Boosts ×
+  Aktualität). Jedes Paper erscheint nur einmal, mit **„Warum sehe ich das?“**.
+- **Aktionen** gelesen, merken und ausblenden. Dazu gibt es Filter, eine Sortierung
+  „Häufig zitiert“, die Suche über die eigene Datenbank und eine Merkliste.
+- **Detailseite** mit Links zu arXiv, DOI, Europe PMC, PubMed und OpenAlex. PDFs werden nur
+  verlinkt, nie gespeichert.
+- **BibTeX-Export** für einzelne Paper und die Merkliste.
+- **Persönlicher RSS/Atom-Feed** unter geheimer, rotierbarer URL, zusätzlich ein Feed je Abo
+  und **OPML-Export**.
+- **Wochen-Mail** (Opt-in, Montag 7 Uhr) mit den Top-10 der Woche und Abmeldelink, inklusive
+  Ein-Klick-Abmeldung.
+- **Quellen**:
+  - [arXiv](https://arxiv.org) (RSS und API)
+  - [Europe PMC](https://europepmc.org) (Lebenswissenschaften inkl. Preprints)
+  - [Crossref](https://www.crossref.org) (Metadaten-Ergänzung)
+  - [OpenAlex](https://openalex.org) (Zitationszahlen)
 
-## Quickstart (lokal)
+  Alle Abfragen laufen zentral, dedupliziert und streng rate-limitiert.
+
+- **Datenschutz:** Login per Magic-Link, gespeichert wird nur die E-Mail-Adresse. Es gibt
+  kein Tracking und keine Drittressourcen, und das Konto ist jederzeit vollständig löschbar.
+- Mobile-first, Hell/Dunkel-Modus, auch ohne JavaScript bedienbar. Freie Software (AGPL-3.0).
+
+## Schnellstart mit Docker
+
+Voraussetzungen: Docker mit Compose v2, eine Domain, die auf den Server zeigt (Ports 80/443
+offen), und ein SMTP-Zugang für die Anmelde-Mails.
+
+```bash
+git clone https://github.com/HenryBehindlooker/Paper-Radar.git
+cd Paper-Radar
+cp .env.example .env
+```
+
+In `.env` mindestens anpassen:
+
+```dotenv
+DOMAIN=radar.example.org
+ORIGIN=                                # leer lassen → https://<DOMAIN>
+POSTGRES_PASSWORD=<langes zufälliges Passwort>
+AUTH_SECRET=<Ausgabe von: openssl rand -base64 32>
+SMTP_HOST=smtp.example.org
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=…
+SMTP_PASSWORD=…
+MAIL_FROM="Paper-Radar <radar@example.org>"
+CONTACT_EMAIL=admin@example.org        # empfohlen: Kontakt für die Datenquellen
+OPENALEX_API_KEY=…                     # optional, für Zitationszahlen
+```
+
+```bash
+docker compose up -d --build
+```
+
+Caddy holt automatisch ein Let's-Encrypt-Zertifikat. Danach ist die Instanz unter
+`https://<DOMAIN>` erreichbar.
+
+| Dienst     | Aufgabe                                                                  |
+| ---------- | ------------------------------------------------------------------------ |
+| `postgres` | Daten und Job-Queue (Volume `pgdata`)                                    |
+| `migrate`  | wendet beim Start einmalig die Datenbank-Migrationen an                  |
+| `app`      | Web-App (SvelteKit, Port 3000 nur intern)                                |
+| `worker`   | Hintergrund-Jobs, einziger Prozess mit Zugriff auf die Datenquellen      |
+| `caddy`    | HTTPS-Reverse-Proxy (Ports 80/443), ohne Zugriffs-Logs                   |
+| `backup`   | nächtlicher `pg_dump` ins Volume `backups`                               |
+| `mailpit`  | nur mit `--profile mailpit`: fängt alle Mails ab (http://localhost:8025) |
+
+> **Genau ein Worker:** Die Rate-Limiter für die Datenquellen gelten pro Prozess. Skaliere den
+> `worker`-Dienst nicht hoch.
+
+**Lokal ausprobieren**, ohne eigene Domain und ohne echten Mailserver. In `.env` setzen:
+
+```dotenv
+DOMAIN=localhost
+ORIGIN=
+SMTP_HOST=mailpit
+SMTP_PORT=1025
+POSTGRES_PASSWORD=<beliebig>
+AUTH_SECRET=<Ausgabe von: openssl rand -base64 32>
+```
+
+```bash
+docker compose --profile mailpit up -d --build
+```
+
+Danach `https://localhost` öffnen. Caddy nutzt hier ein selbstsigniertes Zertifikat, das der
+Browser einmal bestätigen will. Die Anmelde-Mail erscheint unter http://localhost:8025.
+
+## Schnellstart für die Entwicklung
 
 Voraussetzungen: Node.js ≥ 22.12, Docker (für PostgreSQL 16 und Mailpit).
 
 ```bash
-cp .env.example .env                             # danach AUTH_SECRET setzen: openssl rand -base64 32
-docker compose -f docker-compose.dev.yml up -d   # PostgreSQL + Mailpit
+cp .env.example .env                             # AUTH_SECRET setzen: openssl rand -base64 32
+docker compose -f docker-compose.dev.yml up -d   # PostgreSQL (+ Test-DBs) und Mailpit
 npm install
 npm run db:migrate                               # Schema anlegen
 npm run worker                                   # Hintergrund-Jobs (separates Terminal)
 npm run dev                                      # Web-App: http://localhost:5173
 ```
 
-Anmelden: Auf `/login` die E-Mail-Adresse eingeben. Den Magic-Link findest du lokal in
-**Mailpit** unter http://localhost:8025. Dort landen alle Mails, nichts geht nach außen.
+Den Magic-Link findest du in Mailpit unter http://localhost:8025.
 
-## Entwicklung
+| Befehl                   | Zweck                                                           |
+| ------------------------ | --------------------------------------------------------------- |
+| `npm run dev`            | Dev-Server                                                      |
+| `npm run worker`         | Worker (pg-boss-Jobs)                                           |
+| `npm run db:generate`    | Migration aus `src/lib/server/db/schema.ts` erzeugen            |
+| `npm run db:migrate`     | Migrationen anwenden (macht der Worker beim Start ebenfalls)    |
+| `npm run job -- <queue>` | Job sofort einreihen, z. B. `ingest-arxiv-daily`, `backfill 42` |
+| `npm run build`          | Produktions-Build (App nach `build/`, Worker nach `dist/`)      |
+| `npm run lint`           | Prettier-Check, ESLint, svelte-check (TypeScript strict)        |
+| `npm test`               | Unit- und Integrationstests (Vitest)                            |
+| `npm run test:e2e`       | E2E-Tests (Playwright; braucht PostgreSQL und Mailpit)          |
+| `npm run test:live`      | optional: Adapter einmal gegen die echten APIs                  |
 
-| Befehl                   | Zweck                                                                |
-| ------------------------ | -------------------------------------------------------------------- |
-| `npm run dev`            | Dev-Server                                                           |
-| `npm run worker`         | Worker-Prozess (pg-boss-Jobs, einziger Ort für Upstream-API-Aufrufe) |
-| `npm run db:generate`    | Migration aus `src/lib/server/db/schema.ts` erzeugen                 |
-| `npm run db:migrate`     | Migrationen anwenden (macht der Worker beim Start ebenfalls)         |
-| `npm run job -- <queue>` | Job sofort einreihen, z. B. `ingest-arxiv-daily`, `backfill 42`      |
-| `npm run lint`           | Prettier-Check, ESLint, svelte-check (TS)                            |
-| `npm test`               | Unit- und Integrationstests (Vitest)                                 |
-| `npm run test:e2e`       | E2E-Smoke-Tests (Playwright)                                         |
-| `npm run test:live`      | Optional: Adapter einmal gegen die echten APIs                       |
-| `npm run format`         | Code formatieren                                                     |
+Die Integrationstests brauchen `TEST_DATABASE_URL`. Diese Datenbank wird bei jedem Lauf
+**geleert**, ohne die Variable werden die Tests übersprungen. Die E2E-Tests laufen gegen
+`paperradar_e2e` und lesen Magic-Links über die Mailpit-API.
 
-Die Integrationstests brauchen `TEST_DATABASE_URL` (siehe `.env.example`). Diese Datenbank
-wird bei jedem Lauf **geleert**. Ohne die Variable werden die Integrationstests übersprungen.
-Die E2E-Tests starten die App gegen `paperradar_e2e` (überschreibbar mit `E2E_DATABASE_URL`).
-Den Magic-Link lesen sie über die Mailpit-API (`E2E_MAILPIT_URL`, Standard
-`http://127.0.0.1:8025`).
-
-### Projektstruktur
-
-```
-src/lib/server/sources/   Adapter je Quelle + Rate-Limiter
-src/lib/server/db/        Schema, Migrationen (Drizzle)
-src/lib/server/jobs/      pg-boss-Jobs
-src/lib/server/ranking/   Matching, Scoring
-src/lib/i18n/             UI-Texte (Deutsch, i18n-fähig)
-src/routes/api/           JSON-Endpunkte
-src/routes/feed/          RSS/Atom-Feeds
-tests/fixtures/           Echte API-Antworten für Tests
-docs/DATA_SOURCES.md      Endpunkte, Limits, Lizenzen der Quellen
-```
-
-## Anmeldung & Abos
-
-- **Login per Magic-Link** (Auth.js, Nodemailer-Provider): kein Passwort. Neue Konten entstehen
-  beim ersten Login. Der Link ist eine Stunde gültig und nur einmal verwendbar. Es gibt höchstens
-  3 Anmelde-Mails pro Adresse in 15 Minuten. Bei Drosselung erscheint dieselbe Antwortseite,
-  damit sich nicht prüfen lässt, ob eine Adresse existiert.
-- **Sessions** liegen in der Datenbank. Das Cookie enthält nur ein zufälliges Token
-  (`httpOnly`, `sameSite=lax`, `secure` bei HTTPS-`ORIGIN`).
-- **Abos** (`/abos`):
-  - Stichwort in `websearch_to_tsquery`-Syntax, arXiv-Kategorie aus der offiziellen Taxonomie
-    oder Autor:in per Name bzw. ORCID.
-  - Gewicht wählbar: weniger, normal, mehr, viel mehr. Höchstens 50 Abos pro Konto.
-  - Ein neues Abo reiht einen Backfill-Job ein. Das passiert nur, wenn das deduplizierte Query
-    noch nie nachgeladen wurde. Der Fortschritt aktualisiert sich live auf der Seite.
-- **Konto löschen** (`/konto`, DSGVO) entfernt sofort die E-Mail-Adresse, Sessions,
-  Anmelde-Tokens, Abos, Treffer und Merkliste.
-- JSON: `GET /api/subscriptions` liefert die eigenen Abos mit Backfill-Status.
-
-## Oberfläche
-
-- **Feed** (`/`): Karten mit Titel, Autor:innen, Datum, Quelle, ausklappbarem Abstract (nur bei
-  offener Lizenz) und „Warum sehe ich das?“. Aktionen sind gelesen, merken und ausblenden.
-  Filter: Alle, Ungelesen, Ausgeblendet. Die Aktionen funktionieren auch ohne JavaScript.
-- **Suche** (`/suche`): Volltext über alle gespeicherten Paper in Postgres-Websuche-Syntax.
-- **Merkliste** (`/merkliste`) mit BibTeX-Export (`/merkliste/bibtex`).
-- **Detailseite** (`/paper/<id>`): alle Autor:innen, Kategorien, Quellen, Links aus allen
-  Kennungen (arXiv, DOI, Europe PMC, PubMed, PMC, OpenAlex), PDF nur als externer Verweis,
-  BibTeX-Download.
-- **Über** (`/ueber`): Quellen und Lizenzen, Ranking-Methode, Datenschutz.
-- Die Fußzeile enthält die Pflicht-Attribution („Thank you to arXiv for use of its open access
-  interoperability.“) und die Quellen. Das Design ist mobile-first, mit Hell/Dunkel/Automatisch
-  über CSS-Variablen (Auswahl nur im Browser gespeichert). Es werden keine Ressourcen von
-  Drittanbietern geladen.
-
-## Feeds & Wochen-Mail
-
-- **Persönlicher RSS/Atom-Feed** (unter „Konto“ aktivierbar): Die Adresse ist
-  `/feed/<feedId>.<signatur>/rss.xml` bzw. `atom.xml`. Gespeichert wird nur die zufällige
-  `feedId`. Die Signatur ist ein HMAC mit einem aus `AUTH_SECRET` abgeleiteten Schlüssel.
-  „Neue Adresse erzeugen“ macht die alte sofort ungültig. Zusätzlich gibt es einen Feed je Abo
-  (`?abo=<id>`).
-  - Feed-Abrufe brauchen keine Anmeldung, die Adresse ist das Geheimnis.
-  - Abrufe werden mit `Last-Modified` und `304` gecacht und tragen `noindex`.
-  - Ausgeblendete Treffer erscheinen nicht.
-- **OPML-Export** (`/konto/opml`): Gesamtfeed plus ein Feed je Abo, zum Import in Feed-Reader.
-- **Wochen-Mail**:
-  - Opt-in unter „Konto“, Versand Montag 7:00 (Europe/Berlin), Job `weekly-digest`.
-  - Inhalt sind die Top-10 der Treffer der letzten 7 Tage nach Live-Score, mit Begründung.
-    Ohne Treffer kommt keine Mail.
-  - Der Job ist idempotent: Er verschickt höchstens eine Mail pro Person in 6 Tagen.
-  - Jede Mail hat einen signierten Abmeldelink. Ein `GET` darauf ändert nichts, weil
-    Link-Scanner Links automatisch öffnen. Abgemeldet wird erst per Button oder per
-    Ein-Klick-POST nach RFC 8058 (`List-Unsubscribe` + `List-Unsubscribe-Post`).
-  - Der Worker braucht dafür `ORIGIN`, `AUTH_SECRET` und die SMTP-Variablen.
-- **CSRF**: Für die Ein-Klick-Abmeldung ist die eingebaute Origin-Prüfung von SvelteKit durch
-  eine identische eigene Prüfung ersetzt (`src/lib/server/csrf.ts`). Die einzige Ausnahme ist
-  `POST /abmelden/<token>`.
-
-## Anreicherung mit OpenAlex
-
-- **Wöchentlich** (Job `enrich-openalex`, Sonntag 04:13 Europe/Berlin) werden Zitationszahlen
-  und Autoren-IDs abgerufen, und zwar für gemerkte Paper sowie für gut gerankte Treffer der
-  letzten 30 Tage (Relevanz ≥ `OPENALEX_MIN_RELEVANCE`). Gemerkte Paper kommen zuerst. Es gibt
-  ausschließlich Einzelabrufe per OpenAlex-ID, DOI oder PMID, keine Listenabfragen.
-- **Credit-Protokoll:** Verbrauch und gemeldetes Restbudget (`X-RateLimit-*`) jedes Requests
-  landen je UTC-Tag in der Tabelle `openalex_usage`.
-- **Tagesbudget:** `OPENALEX_DAILY_CREDIT_BUDGET` und `OPENALEX_DAILY_REQUEST_LIMIT`. Der Job
-  pausiert sauber, statt einen Fehler zu werfen, wenn
-  - eines der Budgets erreicht ist,
-  - OpenAlex weniger als 50 Credits Restbudget meldet oder
-  - der Server ein leeres Budget meldet.
-
-  Er plant sich dann selbst für die nächste Mitternacht UTC neu ein (Budget-Reset bei
-  OpenAlex). Ohne `OPENALEX_API_KEY` wird die Anreicherung übersprungen.
-
-- Im Feed gibt es die Sortierung **„Häufig zitiert“**. Karten zeigen die Zitationszahl, sobald
-  sie bekannt ist.
-
-## Ranking („Warum sehe ich das?“)
-
-Jedes Paper erscheint pro Person nur einmal, auch wenn mehrere Abos treffen. Der Score ist
-nachvollziehbar und wird nicht personalisiert gelernt:
-
-```
-score = ( Textrelevanz × Abo-Gewicht            (bestes Stichwort-Abo, ts_rank_cd normiert auf r/(r+1))
-        + 0,6 × Abo-Gewicht, falls ein Autor-Abo trifft
-        + 0,3 × Abo-Gewicht, falls ein Kategorie-Abo trifft )
-        × 0,5 ^ (Alter in Tagen / Halbwertszeit)  (RANKING_HALF_LIFE_DAYS, Standard 7)
-```
-
-- Titeltreffer zählen stärker als Abstract-Treffer (tsvector-Gewichte A bzw. B).
-- Gespeichert wird die Relevanz ohne Abfall. Der Feed rechnet den Aktualitäts-Abfall beim
-  Lesen live, damit ältere Treffer mit der Zeit korrekt nach hinten rutschen.
-- Zu jedem Treffer werden die getroffenen Abos gespeichert und im Feed unter
-  „Warum sehe ich das?“ angezeigt, z. B. „Stichwort „crispr“ im Titel“.
-- Matching-Job (`match`): Er läuft nach jeder Ingestion und wenn jemand ein neues Abo anlegt,
-  zusätzlich alle 6 Stunden. Neue Paper werden gegen alle Abos geprüft, neue Abos gegen die
-  vorhandenen Paper der letzten 30 Tage. Jedes deduplizierte Query wird nur einmal ausgewertet.
-  Dabei sind ausschließlich lokale Datenbankabfragen im Spiel, keine Upstream-Aufrufe.
-- Autor-Abos: ORCID exakt, Namen ohne Diakritika und auch mit abgekürzten Vornamen
-  („Rui Yang“ trifft „R. Yang“).
-
-## Datenbank & Jobs
-
-- **Schema** (`src/lib/server/db/schema.ts`): `papers` (mit generierter `tsvector`-Spalte,
-  Titel Gewicht A, Abstract Gewicht B, GIN-Index), `paper_ids` (Typ + Wert, eindeutig),
-  `authors`, `paper_authors`, `users` (nur E-Mail), `subscriptions`, `source_queries`
-  (deduplizierte Abo-Anfragen), `source_query_status`, `matches`, `fetch_log`.
-- **Dedup/Merge:** Gleiche DOI, arXiv-ID, PMID usw. ergeben genau einen Datensatz. Wird einem
-  arXiv-Preprint später eine DOI zugeordnet, werden Preprint und Verlagsversion
-  zusammengeführt, einschließlich Treffern und Merkliste. Metadaten stammen aus der Quelle mit
-  der höchsten Priorität (Crossref > Europe PMC > arXiv > OpenAlex). Anzeigbare Abstracts haben
-  Vorrang. Es gilt das früheste Veröffentlichungsdatum.
-- **Jobs** (pg-boss, Schema `pgboss`, Zeitzone Europe/Berlin):
-
-  | Queue                  | Wann                  | Was                                                                              |
-  | ---------------------- | --------------------- | -------------------------------------------------------------------------------- |
-  | `ingest-queries-daily` | täglich 05:43         | Europe PMC (Keyword/Autor) und arXiv-API (Keyword/Autor) je dedupliziertem Query |
-  | `ingest-arxiv-daily`   | Mo–Fr 07:17           | arXiv-RSS für alle abonnierten Kategorien (gebündelt)                            |
-  | `backfill`             | bei neuem Abo         | letzte 30 Tage aus allen passenden Quellen                                       |
-  | `enrich-crossref`      | nach Ingestion, 09:07 | Crossref-Ergänzung für noch nicht geprüfte DOIs (bis 20 pro Request)             |
-  | `cleanup`              | täglich 03:27         | Paper ohne Treffer und älter als 180 Tage, Verwaistes, Protokoll > 90 Tage       |
-
-- **Nutzeraktionen lösen nie direkte Upstream-Aufrufe aus.** Sie reihen höchstens einen Job
-  ein. Gleiche Abos werden über `source_queries` nur einmal abgefragt.
-- **Genau ein Worker:** Die Rate-Limiter gelten je Prozess. Starte deshalb nur einen
-  Worker-Prozess. Die App sendet nur Jobs.
-- **Fehlerisolation:** Fällt eine Quelle aus, landet das in `fetch_log` und
-  `source_query_status`, die anderen laufen weiter. Das Zeitfenster rückt nur bei Erfolg vor.
-  Der nächste Lauf holt Versäumtes nach (bis zu 30 Tage).
-
-## Docker
-
-_TODO (Phase 8)_
+Aufbau, Datenmodell, Ranking und Jobs sind in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+beschrieben.
 
 ## Konfiguration
 
-Alle Einstellungen erfolgen über Umgebungsvariablen, siehe [`.env.example`](.env.example).
-Secrets gehören ausschließlich in `.env` (nicht im Repository).
+Alle Einstellungen laufen über Umgebungsvariablen in `.env` (Vorlage:
+[`.env.example`](.env.example)). Secrets gehören nur in `.env` und nie ins Repository.
+
+| Variable                                                             | Zweck                                                                                  |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `DOMAIN`                                                             | Domain für Caddy/HTTPS (Docker)                                                        |
+| `ORIGIN`                                                             | öffentliche Basis-URL; mit Docker leer lassen (→ `https://<DOMAIN>`)                   |
+| `POSTGRES_USER` / `_PASSWORD` / `_DB`                                | Datenbank-Zugang (Docker baut daraus `DATABASE_URL`)                                   |
+| `DATABASE_URL`                                                       | Verbindungs-URL (nur ohne Docker nötig)                                                |
+| `AUTH_SECRET`                                                        | Pflicht. Signiert Sessions, Feed-URLs und Abmeldelinks; ändern macht diese ungültig    |
+| `SMTP_HOST` / `_PORT` / `_SECURE` / `_USER` / `_PASSWORD`            | Mailversand (Magic-Links, Wochen-Mail)                                                 |
+| `MAIL_FROM`                                                          | Absender der Mails                                                                     |
+| `CONTACT_EMAIL`                                                      | Kontakt im User-Agent und für den Crossref-„Polite Pool“ (empfohlen)                   |
+| `OPENALEX_API_KEY`                                                   | aktiviert die OpenAlex-Anreicherung (kostenlos, nur serverseitig genutzt)              |
+| `OPENALEX_DAILY_CREDIT_BUDGET` / `_REQUEST_LIMIT` / `_MIN_RELEVANCE` | Tagesbudget und Auswahl für OpenAlex                                                   |
+| `RANKING_HALF_LIFE_DAYS`                                             | Halbwertszeit des Aktualitäts-Abfalls (Standard 7)                                     |
+| `HTTP_PORT` / `HTTPS_PORT`                                           | Host-Ports von Caddy (Standard 80/443)                                                 |
+| `BACKUP_SCHEDULE` / `BACKUP_KEEP_DAYS`                               | Backup-Zeitplan (Cron, UTC; Standard `30 2 * * *`) und Aufbewahrung (Standard 14 Tage) |
+| `LOG_LEVEL`                                                          | `debug`, `info`, `warn` oder `error`                                                   |
+
+## Betrieb
+
+### Gesundheitsstatus
+
+`GET /api/health` liefert JSON mit Datenbank, Queue (Warteschlangen, Herzschlag des Workers) und
+dem letzten Abruf je Datenquelle:
+
+- **HTTP 503**, wenn Datenbank oder Queue nicht erreichbar sind. Der Docker-Healthcheck der App
+  nutzt das.
+- **HTTP 200 mit `status: "degraded"`**, wenn der Worker fehlt oder der letzte Abruf einer
+  Quelle fehlschlug. Der Ausfall einer Quelle stoppt die anderen nicht und ist hier sichtbar.
+
+### Backups
+
+Der Dienst `backup` erstellt jede Nacht um 02:30 UTC einen `pg_dump` im Custom-Format im Volume
+`backups` und löscht Dumps, die älter als 14 Tage sind.
+
+```bash
+# Backup sofort anlegen
+docker compose exec backup paper-radar-backup
+
+# Vorhandene Backups anzeigen
+docker compose exec backup ls -lh /backups
+
+# Backup auf den Host kopieren (für die Ablage außerhalb des Servers)
+docker compose cp backup:/backups/paperradar-YYYYMMDD-HHMMSS.dump ./
+
+# Wiederherstellen – ersetzt die komplette Datenbank durch den Stand des Backups!
+docker compose stop app worker
+docker compose exec backup paper-radar-restore /backups/paperradar-YYYYMMDD-HHMMSS.dump
+docker compose start app worker
+```
+
+Die Backups liegen auf demselben Server. Kopiere sie zusätzlich regelmäßig an einen anderen
+Ort.
+
+### Aktualisieren
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Datenbank-Migrationen laufen dabei automatisch (Dienst `migrate`).
 
 ## Datenquellen & Lizenzen
 
-Siehe [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md). Paper-Radar speichert nur
-Metadaten und Links – keine PDFs.
+Paper-Radar speichert nur Metadaten und Links, keine PDFs. Endpunkte, Rate-Limits, Lizenzen
+und Attributionspflichten jeder Quelle sind in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md)
+dokumentiert und live geprüft.
+
+- **arXiv:** Metadaten unter CC0. Pflicht-Hinweis in der Fußzeile: „Thank you to arXiv for use
+  of its open access interoperability.“ Höchstens 1 Request alle 3 Sekunden.
+- **Europe PMC:** Es gelten die Rechte der Verlage bzw. Autor:innen. Abstracts werden nur bei
+  offener Lizenz angezeigt.
+- **Crossref:** Metadaten sind frei, Abstracts werden nur bei Creative-Commons-Lizenz
+  übernommen. Mit `CONTACT_EMAIL` läuft der Zugriff über den „Polite Pool“.
+- **OpenAlex:** CC0, ausschließlich Einzelabrufe mit Tagesbudget.
 
 ## Datenschutz
 
-Gespeichert wird nur die E-Mail-Adresse (für Login und optionale Wochen-Mail).
-Kein Tracking, keine Analyse-Dienste. Das Konto samt aller Daten ist jederzeit löschbar.
+- Gespeichert wird nur die **E-Mail-Adresse**, dazu Abos, Treffer, Merkliste und Markierungen.
+- Es gibt **kein Tracking**, keine Analyse-Dienste und keine eingebundenen Ressourcen von
+  Drittanbietern. Caddy schreibt keine Zugriffs-Logs.
+- Cookies: nur das Sitzungs-Cookie nach der Anmeldung (`httpOnly`, `secure`, `sameSite=lax`).
+- Mails enthalten keine Tracking-Pixel. Die Wochen-Mail ist Opt-in und hat einen Abmeldelink.
+- **Konto löschen** unter „Konto“ entfernt sofort alle personenbezogenen Daten.
 
-## Contributing
+## Mitmachen
 
-_TODO (Phase 8)_
+Beiträge sind willkommen – siehe [CONTRIBUTING.md](CONTRIBUTING.md). Änderungen stehen im
+[CHANGELOG](CHANGELOG.md).
 
 ## Lizenz
 
-[GNU Affero General Public License v3.0](LICENSE)
+[GNU Affero General Public License v3.0](LICENSE). Wer eine geänderte Version als Dienst
+betreibt, muss den Quellcode der Änderungen den Nutzer:innen zugänglich machen.

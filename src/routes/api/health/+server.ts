@@ -1,10 +1,13 @@
 import { json } from '@sveltejs/kit';
+import { getBoss, getDb } from '$lib/server/app';
+import { healthReport } from '$lib/server/health';
 import type { RequestHandler } from './$types';
 
 /**
- * Liveness-Endpunkt. DB- und Queue-Status sowie Quellen-Status folgen in
- * späteren Phasen (Phase 2/8).
+ * Gesundheitsstatus inkl. Datenbank, Queue (Worker-Herzschlag, Warteschlangen) und Quellen.
+ * 503, wenn Datenbank oder Queue nicht erreichbar sind; sonst 200 („ok“ oder „degraded“).
  */
-export const GET: RequestHandler = () => {
-	return json({ status: 'ok' });
+export const GET: RequestHandler = async () => {
+	const { report, httpStatus } = await healthReport({ db: getDb(), getBoss });
+	return json(report, { status: httpStatus, headers: { 'Cache-Control': 'no-store' } });
 };
