@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<rss xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0">
+  <channel>
+    <title>Feed error for query: http://rss.arxiv.org/rss/foo.BAR</title>
+    <link>http://rss.arxiv.org/rss/foo.BAR</link>
+    <description>Bad archive 'foo'. Valid archive names are: astro-ph, cond-mat, cs, econ, eess, gr-qc, hep-ex, hep-lat, hep-ph, hep-th, math, math-ph, nlin, nucl-ex, nucl-th, physics, q-bio, q-fin, quant-ph, stat, test.</description>
+    <atom:link href="http://rss.arxiv.org/rss/foo.BAR" rel="self" type="application/rss+xml"/>
+    <docs>http://www.rssboard.org/rss-specification</docs>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 03 Nov 2026 13:19:59 +0000</lastBuildDate>
+    <managingEditor>rss-help.arxiv.org</managingEditor>
+    <pubDate>Tue, 03 Nov 2026 00:00:00 -0500</pubDate>
+  </channel>
+</rss>
