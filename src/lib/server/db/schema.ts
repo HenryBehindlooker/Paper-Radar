@@ -308,6 +308,8 @@ export const matches = pgTable(
 			.default(sql`'{}'`),
 		seen: boolean('seen').notNull().default(false),
 		saved: boolean('saved').notNull().default(false),
+		/** Zeitpunkt des Merkens (Sortierung der Merkliste). */
+		savedAt: tstz('saved_at'),
 		hidden: boolean('hidden').notNull().default(false),
 		createdAt: tstz('created_at').notNull().defaultNow()
 	},

@@ -84,6 +84,22 @@ docs/DATA_SOURCES.md      Endpunkte, Limits, Lizenzen der Quellen
   Anmelde-Tokens, Abos, Treffer und Merkliste.
 - JSON: `GET /api/subscriptions` liefert die eigenen Abos mit Backfill-Status.
 
+## Oberfläche
+
+- **Feed** (`/`): Karten mit Titel, Autor:innen, Datum, Quelle, ausklappbarem Abstract (nur bei
+  offener Lizenz) und „Warum sehe ich das?“. Aktionen sind gelesen, merken und ausblenden.
+  Filter: Alle, Ungelesen, Ausgeblendet. Die Aktionen funktionieren auch ohne JavaScript.
+- **Suche** (`/suche`): Volltext über alle gespeicherten Paper in Postgres-Websuche-Syntax.
+- **Merkliste** (`/merkliste`) mit BibTeX-Export (`/merkliste/bibtex`).
+- **Detailseite** (`/paper/<id>`): alle Autor:innen, Kategorien, Quellen, Links aus allen
+  Kennungen (arXiv, DOI, Europe PMC, PubMed, PMC, OpenAlex), PDF nur als externer Verweis,
+  BibTeX-Download.
+- **Über** (`/ueber`): Quellen und Lizenzen, Ranking-Methode, Datenschutz.
+- Die Fußzeile enthält die Pflicht-Attribution („Thank you to arXiv for use of its open access
+  interoperability.“) und die Quellen. Das Design ist mobile-first, mit Hell/Dunkel/Automatisch
+  über CSS-Variablen (Auswahl nur im Browser gespeichert). Es werden keine Ressourcen von
+  Drittanbietern geladen.
+
 ## Ranking („Warum sehe ich das?“)
 
 Jedes Paper erscheint pro Person nur einmal, auch wenn mehrere Abos treffen. Der Score ist

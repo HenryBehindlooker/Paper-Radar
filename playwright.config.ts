@@ -5,12 +5,12 @@ import { defineConfig } from '@playwright/test';
  * Die App läuft dafür gegen eine eigene Datenbank.
  */
 export const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? 'http://127.0.0.1:8025';
+export const E2E_DATABASE_URL =
+	process.env.E2E_DATABASE_URL ?? 'postgres://paperradar:paperradar@localhost:5432/paperradar_e2e';
 const PORT = 4173;
 
 const appEnv = {
-	DATABASE_URL:
-		process.env.E2E_DATABASE_URL ??
-		'postgres://paperradar:paperradar@localhost:5432/paperradar_e2e',
+	DATABASE_URL: E2E_DATABASE_URL,
 	ORIGIN: `http://localhost:${PORT}`,
 	AUTH_SECRET: process.env.E2E_AUTH_SECRET ?? 'e2e-only-secret-never-use-in-production-0123456789',
 	AUTH_TRUST_HOST: 'true',

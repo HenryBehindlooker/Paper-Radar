@@ -3,7 +3,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { handle as authentication } from '$lib/server/auth';
 
 /** Seiten und APIs, die eine Anmeldung erfordern. */
-const PROTECTED_PAGES = ['/abos', '/konto'];
+const PROTECTED_PAGES = ['/abos', '/konto', '/suche', '/merkliste', '/paper'];
 const PROTECTED_API = ['/api/subscriptions'];
 
 const matches = (path: string, prefixes: string[]) =>

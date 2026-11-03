@@ -6,7 +6,7 @@ import { upsertPaper } from '$lib/server/db/papers';
 import { createSubscription } from '$lib/server/db/queries';
 import { matches, papers, subscriptions } from '$lib/server/db/schema';
 import { silentLogger } from '$lib/server/log';
-import { feedForUser } from '$lib/server/feed';
+import { feedPage } from '$lib/server/papers-view';
 import { liveScoreSql, runMatching } from '$lib/server/ranking/match';
 import type { NormalizedPaper } from '$lib/server/sources/types';
 import {
@@ -303,20 +303,16 @@ describe.skipIf(!hasTestDb)('Matching', () => {
 			.set({ hidden: true })
 			.where(and(eq(matches.userId, alice), eq(matches.paperId, hidden.paperId)));
 
-		const feed = await feedForUser(database.db, alice, {
-			now: NOW,
-			halfLifeDays: 7,
-			maxAuthors: 3
-		});
+		const { items: feed } = await feedPage(database.db, alice, { now: NOW, halfLifeDays: 7 });
 		expect(feed.map((f) => f.paperId)).toEqual([strong.paperId, weak.paperId]);
 		expect(feed[0]).toMatchObject({
 			abstract: 'Open abstract about dark matter.',
-			authors: ['Author 0', 'Author 1', 'Author 2'],
+			authors: Array.from({ length: 8 }, (_, i) => `Author ${i}`),
 			authorCount: 8
 		});
 		expect(feed[0]?.reasons.map((r) => r.type)).toEqual(['keyword', 'category']);
 		expect(feed[1]?.abstract).toBeNull();
 		expect(feed[0]?.score).toBeGreaterThan(feed[1]?.score ?? 0);
-		expect(await feedForUser(database.db, bob, { now: NOW, halfLifeDays: 7 })).toEqual([]);
+		expect((await feedPage(database.db, bob, { now: NOW, halfLifeDays: 7 })).items).toEqual([]);
 	});
 });

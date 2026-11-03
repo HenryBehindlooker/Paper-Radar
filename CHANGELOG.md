@@ -7,6 +7,12 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Hinzugefügt
 
+- Oberfläche: Feed-Karten mit Abstract, Begründung und Aktionen (gelesen, merken,
+  ausblenden; auch ohne JavaScript), Filter und Seiten; Suche über die eigene Datenbank;
+  Merkliste; Paper-Detailseite mit Links aus allen Kennungen (PDF nur als Verweis);
+  BibTeX-Export für einzelne Paper und die Merkliste; Über-Seite (Quellen, Ranking,
+  Datenschutz); Pflicht-Attribution in der Fußzeile; Hell/Dunkel-Umschalter.
+
 - Matching und Ranking: reine, getestete Score-Funktionen (Textrelevanz × Gewicht,
   Autor-/Kategorie-Boost, Aktualitäts-Abfall mit konfigurierbarer Halbwertszeit),
   Matching-Job mit Wasserstand (inkl. Überlappung gegen späte Commits), Erstzuordnung

@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { explainReasons } from '$lib/ranking/reasons';
-	import { t } from '$lib/i18n';
+	import Pager from '$lib/components/Pager.svelte';
+	import PaperCard from '$lib/components/PaperCard.svelte';
+	import { t, type MessageKey } from '$lib/i18n';
 
 	let { data } = $props();
 
-	const dateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeZone: 'UTC' });
+	const FILTERS = ['alle', 'ungelesen', 'ausgeblendet'] as const;
+	const filterHref = (f: string) => (f === 'alle' ? '/' : `/?filter=${f}`);
 </script>
 
 <svelte:head>
-	<title>{t('app.name')}</title>
+	<title>{data.feed ? t('feed.title') : t('app.name')}</title>
 </svelte:head>
 
 {#if page.url.searchParams.get('konto') === 'geloescht'}
@@ -19,35 +21,28 @@
 
 {#if data.user && data.feed}
 	<h1>{t('feed.title')}</h1>
-	{#if data.feed.length === 0}
-		<p class="muted">{t('feed.empty')}</p>
-		<p><a href={resolve('/abos')}>{t('home.toSubscriptions')}</a></p>
+	<nav class="filters" aria-label={t('feed.filter.label')}>
+		{#each FILTERS as f (f)}
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Startseite mit Filter-Parameter -->
+			<a href={filterHref(f)} aria-current={data.filter === f ? 'page' : undefined}
+				>{t(`feed.filter.${f}` as MessageKey)}</a
+			>
+		{/each}
+	</nav>
+	{#if data.feed.items.length === 0}
+		{#if data.filter === 'alle' && data.feed.page === 1}
+			<p class="muted">{t('feed.empty')}</p>
+			<p><a href={resolve('/abos')}>{t('home.toSubscriptions')}</a></p>
+		{:else}
+			<p class="muted">{t('feed.emptyFilter')}</p>
+		{/if}
 	{:else}
-		<ol class="feed">
-			{#each data.feed as item (item.paperId)}
-				<li class="card item" data-testid="feed-item">
-					<h2 class="title">
-						<a href={item.landingUrl} rel="noopener noreferrer" target="_blank">{item.title}</a>
-					</h2>
-					<p class="meta">
-						{item.authors.join(', ')}{item.authorCount > item.authors.length
-							? ` ${t('feed.moreAuthors')}`
-							: ''}
-						· {dateFormat.format(new Date(item.publishedAt))}
-						{#if item.journal}· {item.journal}{/if}
-					</p>
-					<details class="why">
-						<summary>{t('feed.why')}</summary>
-						<ul>
-							{#each explainReasons(item.reasons) as reason (reason)}
-								<li>{reason}</li>
-							{/each}
-						</ul>
-						<p class="muted">{t('feed.score')}: {item.score.toFixed(3)}</p>
-					</details>
-				</li>
+		<ol class="list">
+			{#each data.feed.items as card (card.paperId)}
+				<li><PaperCard {card} /></li>
 			{/each}
 		</ol>
+		<Pager page={data.feed.page} hasMore={data.feed.hasMore} />
 	{/if}
 {:else}
 	<h1>{t('app.name')}</h1>
@@ -56,41 +51,13 @@
 {/if}
 
 <style>
-	.feed {
-		list-style: none;
-		padding: 0;
-		display: grid;
-		gap: 0.75rem;
+	.filters {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 1rem;
 	}
 
-	.title {
-		font-size: 1.05rem;
-		margin: 0 0 0.25rem;
-		overflow-wrap: anywhere;
-	}
-
-	.title a {
-		color: var(--color-text);
-		text-decoration: none;
-	}
-
-	.title a:hover {
-		text-decoration: underline;
-	}
-
-	.meta {
-		margin: 0;
-		color: var(--color-muted);
-		font-size: 0.9rem;
-	}
-
-	.why {
-		margin-top: 0.5rem;
-		font-size: 0.9rem;
-	}
-
-	.why summary {
-		cursor: pointer;
-		color: var(--color-accent);
+	.filters a[aria-current='page'] {
+		font-weight: 700;
 	}
 </style>
