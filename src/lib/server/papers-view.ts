@@ -151,6 +151,12 @@ export function parseFeedFilter(value: string | null): FeedFilter {
 	return value === 'ungelesen' || value === 'ausgeblendet' ? value : 'alle';
 }
 
+export type FeedSort = 'relevanz' | 'zitiert';
+
+export function parseFeedSort(value: string | null): FeedSort {
+	return value === 'zitiert' ? 'zitiert' : 'relevanz';
+}
+
 export function parsePage(value: string | null): number {
 	const n = Number(value);
 	return Number.isInteger(n) && n >= 1 && n <= 1000 ? n : 1;
@@ -163,7 +169,14 @@ export function parsePage(value: string | null): number {
 export async function feedPage(
 	db: Db,
 	userId: string,
-	options: { now: Date; halfLifeDays: number; filter?: FeedFilter; page?: number; size?: number }
+	options: {
+		now: Date;
+		halfLifeDays: number;
+		filter?: FeedFilter;
+		sort?: FeedSort;
+		page?: number;
+		size?: number;
+	}
 ): Promise<Page<PaperCard>> {
 	const size = options.size ?? PAGE_SIZE;
 	const page = options.page ?? 1;
@@ -180,7 +193,13 @@ export async function feedPage(
 		.from(matches)
 		.innerJoin(papers, eq(papers.id, matches.paperId))
 		.where(and(...conditions))
-		.orderBy(desc(live), desc(papers.publishedAt), desc(papers.id))
+		.orderBy(
+			...(options.sort === 'zitiert'
+				? [sql`${papers.citedByCount} DESC NULLS LAST`, desc(live)]
+				: [desc(live)]),
+			desc(papers.publishedAt),
+			desc(papers.id)
+		)
 		.limit(size + 1)
 		.offset((page - 1) * size);
 	const cards = await hydrateCards(

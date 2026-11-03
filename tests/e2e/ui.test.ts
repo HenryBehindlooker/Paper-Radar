@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Locator } from '@playwright/test';
+import { eq } from 'drizzle-orm';
 import { createDatabase, type Database } from '../../src/lib/server/db/index';
+import { papers } from '../../src/lib/server/db/schema';
 import { upsertPaper } from '../../src/lib/server/db/papers';
 import { createLogger } from '../../src/lib/server/log';
 import { runMatching } from '../../src/lib/server/ranking/match';
@@ -173,6 +175,36 @@ test('Feed-Karten, Aktionen, Merkliste, Detail, BibTeX, Suche', async ({ page, r
 
 	// Unbekanntes Paper → 404
 	expect((await page.request.get('/paper/999999999')).status()).toBe(404);
+});
+
+test('Zitationszahlen und Sortierung „Häufig zitiert“', async ({ page, request }) => {
+	await login(page, request);
+	const tag = `cite${Date.now()}`;
+	await page.getByLabel('Suchbegriffe').fill(tag);
+	await page.getByRole('button', { name: 'Abo hinzufügen' }).click();
+	await expect(page.getByTestId('subscription')).toHaveCount(1);
+	const [newest, , oldest] = await seedPapers(tag);
+	// Wie nach der OpenAlex-Anreicherung: das älteste Paper ist am häufigsten zitiert.
+	await database.db
+		.update(papers)
+		.set({ citedByCount: 1234 })
+		.where(eq(papers.id, oldest as number));
+	await database.db
+		.update(papers)
+		.set({ citedByCount: 5 })
+		.where(eq(papers.id, newest as number));
+
+	await page.goto('/');
+	const cards = page.getByTestId('paper-card').filter({ hasText: tag });
+	await expect(cards.first()).toContainText(`Open citation graphs ${tag}`);
+	await expect(cards.first().getByTestId('citations')).toHaveText('5 Zitationen');
+
+	await page.getByRole('link', { name: 'Häufig zitiert' }).click();
+	await expect(page).toHaveURL(/\?sortierung=zitiert$/);
+	await expect(cards.first()).toContainText(`Library metrics revisited ${tag}`);
+	await expect(cards.first().getByTestId('citations')).toHaveText('1234 Zitationen');
+	await page.getByRole('link', { name: 'Ungelesen' }).click();
+	await expect(page).toHaveURL(/\?filter=ungelesen&sortierung=zitiert$/);
 });
 
 test('Aktionen funktionieren auch ohne JavaScript', async ({ browser, page, request }) => {

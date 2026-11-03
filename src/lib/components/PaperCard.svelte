@@ -20,6 +20,7 @@
 		seen: boolean;
 		saved: boolean;
 		hidden: boolean;
+		citedByCount?: number | null;
 	}
 
 	let { card, headingLevel = 2 }: { card: Card; headingLevel?: 1 | 2 | 3 } = $props();
@@ -46,6 +47,9 @@
 		{/if}
 		<span>{formatDate(card.publishedAt)}</span>
 		{#if card.journal}<span>{card.journal}</span>{/if}
+		{#if card.citedByCount !== null && card.citedByCount !== undefined}
+			<span data-testid="citations">{t('card.citations', { n: card.citedByCount })}</span>
+		{/if}
 		<span class="sources">
 			{#each card.sources as source (source)}
 				<span class="badge">{sourceLabel(source)}</span>

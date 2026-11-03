@@ -3,6 +3,7 @@ import { PgBoss, type Queue } from 'pg-boss';
 import type { Db } from '../db/index';
 import { sourceQueries } from '../db/schema';
 import { runWeeklyDigest } from '../digest';
+import { enrichWithOpenAlex } from '../enrichment/openalex';
 import { runMatching } from '../ranking/match';
 import type { JobContext } from './context';
 import {
@@ -23,6 +24,7 @@ export const QUEUES = {
 	enrichCrossref: 'enrich-crossref',
 	match: 'match',
 	weeklyDigest: 'weekly-digest',
+	enrichOpenalex: 'enrich-openalex',
 	cleanup: 'cleanup'
 } as const;
 
@@ -74,6 +76,14 @@ export const QUEUE_DEFINITIONS: Array<Queue> = [
 		expireInSeconds: 1800
 	},
 	{
+		name: QUEUES.enrichOpenalex,
+		policy: 'stately',
+		retryLimit: 2,
+		retryDelay: 1800,
+		retryBackoff: true,
+		expireInSeconds: 4 * 3600
+	},
+	{
 		name: QUEUES.weeklyDigest,
 		policy: 'stately',
 		retryLimit: 3,
@@ -95,6 +105,8 @@ export const SCHEDULES: Array<{ name: QueueName; cron: string }> = [
 	// Sicherheitsnetz; regulär läuft das Matching direkt nach jeder Ingestion.
 	{ name: QUEUES.match, cron: '37 */6 * * *' },
 	{ name: QUEUES.cleanup, cron: '27 3 * * *' },
+	// Sonntagmorgen, damit die Zitationszahlen zur Wochen-Mail aktuell sind.
+	{ name: QUEUES.enrichOpenalex, cron: '13 4 * * 0' },
 	// Montag 7:00 Uhr (Europe/Berlin), wie gefordert exakt zur vollen Stunde.
 	{ name: QUEUES.weeklyDigest, cron: '0 7 * * 1' }
 ];
@@ -205,6 +217,26 @@ export async function registerWorkers(boss: PgBoss, ctx: JobContext): Promise<vo
 
 	await boss.work(QUEUES.match, options, async () => {
 		return runMatching(ctx);
+	});
+
+	await boss.work(QUEUES.enrichOpenalex, options, async () => {
+		if (!ctx.enrichment) return { status: 'disabled' };
+		const result = await enrichWithOpenAlex({
+			db: ctx.db,
+			logger: log,
+			now: ctx.now,
+			...ctx.enrichment
+		});
+		// Budget erreicht: sauber pausieren und nach dem Reset fortsetzen.
+		if (result.status === 'paused' && result.resumeAt && result.remaining > 0) {
+			await boss.sendAfter(QUEUES.enrichOpenalex, null, null, result.resumeAt);
+			log.info('OpenAlex-Anreicherung pausiert', {
+				reason: result.reason,
+				remaining: result.remaining,
+				resumeAt: result.resumeAt.toISOString()
+			});
+		}
+		return result;
 	});
 
 	await boss.work(QUEUES.weeklyDigest, options, async () => {

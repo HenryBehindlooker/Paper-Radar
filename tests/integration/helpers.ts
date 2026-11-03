@@ -41,7 +41,7 @@ export async function closeTestDatabase(): Promise<void> {
 
 export async function resetDatabase(db: Db): Promise<void> {
 	await db.execute(sql`TRUNCATE papers, paper_ids, authors, paper_authors, users, subscriptions,
-		source_queries, source_query_status, matches, fetch_log, job_state RESTART IDENTITY CASCADE`);
+		source_queries, source_query_status, matches, fetch_log, job_state, openalex_usage RESTART IDENTITY CASCADE`);
 }
 
 export async function createUser(db: Db, email: string): Promise<string> {

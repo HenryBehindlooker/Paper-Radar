@@ -18,6 +18,7 @@ import { createLogger } from './lib/server/log';
 import { loadRankingConfig } from './lib/server/ranking/score';
 import { createTransport, loadSmtpConfig } from './lib/server/mail';
 import { deriveKey } from './lib/server/tokens';
+import { loadOpenAlexBudget, OpenAlexUsageTracker } from './lib/server/enrichment/budget';
 import { createSources } from './lib/server/sources/index';
 
 const log = createLogger('worker');
@@ -56,13 +57,19 @@ async function main(): Promise<void> {
 	await runMigrations(database.db);
 	log.info('Datenbank-Migrationen geprüft');
 
-	const sources = createSources(loadSourcesConfig(), { logger: log.child('sources') });
+	const tracker = new OpenAlexUsageTracker();
+	const sources = createSources(loadSourcesConfig(), {
+		logger: log.child('sources'),
+		// Credit-Verbrauch jedes OpenAlex-Requests protokollieren (Header X-RateLimit-*).
+		onOpenAlexUsage: (usage) => tracker.record(usage)
+	});
 	const ctx: JobContext = {
 		db: database.db,
 		sources,
 		logger: log.child('jobs'),
 		now: () => new Date(),
 		ranking: loadRankingConfig(process.env),
+		enrichment: { openalex: sources.openalex, tracker, budget: loadOpenAlexBudget(process.env) },
 		...digestConfig()
 	};
 

@@ -124,6 +124,26 @@ docs/DATA_SOURCES.md      Endpunkte, Limits, Lizenzen der Quellen
   eine identische eigene Prüfung ersetzt (`src/lib/server/csrf.ts`). Die einzige Ausnahme ist
   `POST /abmelden/<token>`.
 
+## Anreicherung mit OpenAlex
+
+- **Wöchentlich** (Job `enrich-openalex`, Sonntag 04:13 Europe/Berlin) werden Zitationszahlen
+  und Autoren-IDs abgerufen, und zwar für gemerkte Paper sowie für gut gerankte Treffer der
+  letzten 30 Tage (Relevanz ≥ `OPENALEX_MIN_RELEVANCE`). Gemerkte Paper kommen zuerst. Es gibt
+  ausschließlich Einzelabrufe per OpenAlex-ID, DOI oder PMID, keine Listenabfragen.
+- **Credit-Protokoll:** Verbrauch und gemeldetes Restbudget (`X-RateLimit-*`) jedes Requests
+  landen je UTC-Tag in der Tabelle `openalex_usage`.
+- **Tagesbudget:** `OPENALEX_DAILY_CREDIT_BUDGET` und `OPENALEX_DAILY_REQUEST_LIMIT`. Der Job
+  pausiert sauber, statt einen Fehler zu werfen, wenn
+  - eines der Budgets erreicht ist,
+  - OpenAlex weniger als 50 Credits Restbudget meldet oder
+  - der Server ein leeres Budget meldet.
+
+  Er plant sich dann selbst für die nächste Mitternacht UTC neu ein (Budget-Reset bei
+  OpenAlex). Ohne `OPENALEX_API_KEY` wird die Anreicherung übersprungen.
+
+- Im Feed gibt es die Sortierung **„Häufig zitiert“**. Karten zeigen die Zitationszahl, sobald
+  sie bekannt ist.
+
 ## Ranking („Warum sehe ich das?“)
 
 Jedes Paper erscheint pro Person nur einmal, auch wenn mehrere Abos treffen. Der Score ist

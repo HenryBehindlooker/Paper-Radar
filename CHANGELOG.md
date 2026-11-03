@@ -7,6 +7,11 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ### Hinzugefügt
 
+- OpenAlex-Anreicherung (wöchentlich): Zitationszahlen und Autoren-IDs für gemerkte und gut
+  gerankte Paper per Einzelabruf; Credit-/Request-Protokoll je UTC-Tag, konfigurierbares
+  Tagesbudget, sauberes Pausieren mit automatischer Fortsetzung nach dem Budget-Reset.
+- Feed-Sortierung „Häufig zitiert“ und Zitationszahl auf den Karten.
+
 - Persönlicher RSS 2.0/Atom 1.0-Feed unter geheimer, rotierbarer URL (HMAC-signiert, nur
   Feed-ID gespeichert), Feed je Abo, Caching per Last-Modified/304; OPML-Export.
 - Wochen-Mail (Opt-in, Montag 7 Uhr Europe/Berlin): Top-10 der Woche mit Begründung,

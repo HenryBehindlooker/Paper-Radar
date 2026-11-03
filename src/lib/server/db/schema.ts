@@ -96,6 +96,8 @@ export const papers = pgTable(
 		lastSeenAt: tstz('last_seen_at').notNull().defaultNow(),
 		citedByCount: integer('cited_by_count'),
 		citedByUpdatedAt: tstz('cited_by_updated_at'),
+		/** Letzter OpenAlex-Abruf (auch wenn das Paper dort nicht gefunden wurde). */
+		openalexCheckedAt: tstz('openalex_checked_at'),
 		crossrefCheckedAt: tstz('crossref_checked_at'),
 		searchVector: tsvector('search_vector').notNull().generatedAlwaysAs(SEARCH_VECTOR_SQL)
 	},
@@ -327,6 +329,16 @@ export const matches = pgTable(
 		index('matches_paper_idx').on(t.paperId)
 	]
 );
+
+/** OpenAlex-Verbrauch je UTC-Tag (Budget setzt um Mitternacht UTC zurück). */
+export const openalexUsage = pgTable('openalex_usage', {
+	day: text('day').primaryKey(),
+	requests: integer('requests').notNull().default(0),
+	credits: integer('credits').notNull().default(0),
+	/** Zuletzt gemeldetes Restbudget (X-RateLimit-Remaining), falls vorhanden. */
+	lastRemaining: integer('last_remaining'),
+	updatedAt: tstz('updated_at').notNull().defaultNow()
+});
 
 /** Kleiner Schlüssel-Wert-Speicher für Job-Zustände (z. B. Matching-Wasserstand). */
 export const jobState = pgTable('job_state', {

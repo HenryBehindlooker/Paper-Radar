@@ -3,7 +3,9 @@ import type { PgBoss } from 'pg-boss';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Database } from '$lib/server/db/index';
 import { createSubscription } from '$lib/server/db/queries';
-import { sourceQueries } from '$lib/server/db/schema';
+import { fetchLog, matches, sourceQueries } from '$lib/server/db/schema';
+import { DEFAULT_OPENALEX_BUDGET, OpenAlexUsageTracker } from '$lib/server/enrichment/budget';
+import { upsertPaper } from '$lib/server/db/papers';
 import {
 	createBoss,
 	QUEUES,
@@ -70,6 +72,10 @@ describe.skipIf(!hasTestDb)('pg-boss: Queues, Zeitpläne, Worker', () => {
 		expect(byName[QUEUES.cleanup]).toBeDefined();
 		expect(byName[QUEUES.weeklyDigest]).toMatchObject({ cron: '0 7 * * 1', timezone: SCHEDULE_TZ });
 		expect(byName[QUEUES.match]).toBeDefined();
+		expect(byName[QUEUES.enrichOpenalex]).toMatchObject({
+			cron: '13 4 * * 0',
+			timezone: SCHEDULE_TZ
+		});
 	});
 
 	it('Backfill-Anfragen werden pro Query zusammengefasst und vom Worker abgearbeitet', async () => {
@@ -89,7 +95,24 @@ describe.skipIf(!hasTestDb)('pg-boss: Queues, Zeitpläne, Worker', () => {
 
 		const { europepmc, sources } = fakeSources();
 		europepmc.result = [makePaper({ source: 'europepmc', ids: { doi: '10.1000/boss' } })];
-		await registerWorkers(boss, jobContext(database.db, sources, new Date()));
+		const tracker = new OpenAlexUsageTracker();
+		const ctx = jobContext(database.db, sources, new Date());
+		ctx.now = () => new Date();
+		await registerWorkers(boss, {
+			...ctx,
+			enrichment: {
+				// OpenAlex-Attrappe: jeder Abruf zählt einen Request, Budget 1 pro Tag.
+				openalex: {
+					enabled: true,
+					getById: async () => {
+						tracker.record({ creditsUsed: 0, status: 200 });
+						return [];
+					}
+				},
+				tracker,
+				budget: { ...DEFAULT_OPENALEX_BUDGET, dailyRequests: 1 }
+			}
+		});
 
 		await waitFor(async () => {
 			const [row] = await database.db
@@ -99,5 +122,39 @@ describe.skipIf(!hasTestDb)('pg-boss: Queues, Zeitpläne, Worker', () => {
 			return row?.status === 'done';
 		});
 		expect(europepmc.searches).toHaveLength(1);
+	});
+
+	it('OpenAlex-Anreicherung pausiert beim Budget und plant die Fortsetzung für Mitternacht UTC', async () => {
+		const userId = await createUser(database.db, 'enrich@example.org');
+		for (const doi of ['10.1000/oa1', '10.1000/oa2']) {
+			const p = await upsertPaper(database.db, makePaper({ ids: { doi } }));
+			await database.db.insert(matches).values({
+				userId,
+				paperId: p.paperId,
+				score: 1,
+				relevance: 1,
+				saved: true,
+				reasons: []
+			});
+		}
+		await boss.send(QUEUES.enrichOpenalex, null);
+		await waitFor(async () => {
+			const logs = await database.db.select().from(fetchLog).where(eq(fetchLog.source, 'openalex'));
+			return logs.length > 0;
+		});
+		await waitFor(
+			async () => (await boss.findJobs(QUEUES.enrichOpenalex, { queued: true })).length === 1
+		);
+		const [next] = await boss.findJobs(QUEUES.enrichOpenalex, { queued: true });
+		const now = new Date();
+		const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+		expect(next?.startAfter.getTime()).toBe(midnight);
+		const [log] = await database.db.select().from(fetchLog).where(eq(fetchLog.source, 'openalex'));
+		expect(log?.detail).toMatchObject({
+			status: 'paused',
+			reason: 'requests',
+			checked: 1,
+			remaining: 1
+		});
 	});
 });

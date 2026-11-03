@@ -266,6 +266,22 @@ Den Key sendet Paper-Radar als `Authorization: Bearer <key>`, nie als Query-Para
 - **Live-Befund:** Einzelabrufe funktionieren auch dann, wenn das Budget ohne Key bei 0
   steht (`x-ratelimit-credits-used: 0`).
 
+### Nutzung in Paper-Radar (Phase 7)
+
+- Es gibt einen wöchentlichen Job (`enrich-openalex`) mit Einzelabrufen für gemerkte und gut
+  gerankte Paper. Bevorzugt wird die bereits bekannte OpenAlex-ID, sonst die DOI, sonst die
+  PMID.
+- Jeder Request trägt seinen Verbrauch aus `X-RateLimit-Credits-Used` und
+  `X-RateLimit-Remaining` in `openalex_usage` ein (je UTC-Tag).
+- Budgets je UTC-Tag sind `OPENALEX_DAILY_CREDIT_BUDGET` (Standard 1000) und
+  `OPENALEX_DAILY_REQUEST_LIMIT` (Standard 2000).
+- Der Job pausiert ohne Fehler, wenn
+  - ein Budget erreicht ist,
+  - das gemeldete Restbudget unter 50 liegt oder
+  - eine `429`-Antwort mit leerem Budget kommt.
+
+  Die Fortsetzung wird für die nächste Mitternacht UTC eingeplant.
+
 ### Lizenz und Nutzung
 
 - Die Daten stehen unter **CC0**. Paper-Radar übernimmt aus OpenAlex trotzdem **keine

@@ -8,7 +8,15 @@
 	let { data } = $props();
 
 	const FILTERS = ['alle', 'ungelesen', 'ausgeblendet'] as const;
-	const filterHref = (f: string) => (f === 'alle' ? '/' : `/?filter=${f}`);
+	const SORTS = ['relevanz', 'zitiert'] as const;
+	/** Feste Werte (keine Nutzereingabe), daher ohne URL-Kodierung. */
+	function href(filter: string, sort: string): string {
+		const parts = [
+			filter !== 'alle' ? `filter=${filter}` : '',
+			sort !== 'relevanz' ? `sortierung=${sort}` : ''
+		].filter(Boolean);
+		return parts.length ? `/?${parts.join('&')}` : '/';
+	}
 </script>
 
 <svelte:head>
@@ -24,8 +32,16 @@
 	<nav class="filters" aria-label={t('feed.filter.label')}>
 		{#each FILTERS as f (f)}
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Startseite mit Filter-Parameter -->
-			<a href={filterHref(f)} aria-current={data.filter === f ? 'page' : undefined}
+			<a href={href(f, data.sort)} aria-current={data.filter === f ? 'page' : undefined}
 				>{t(`feed.filter.${f}` as MessageKey)}</a
+			>
+		{/each}
+	</nav>
+	<nav class="filters sort" aria-label={t('feed.sort.label')}>
+		{#each SORTS as so (so)}
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- Startseite mit Sortier-Parameter -->
+			<a href={href(data.filter, so)} aria-current={data.sort === so ? 'page' : undefined}
+				>{t(`feed.sort.${so}` as MessageKey)}</a
 			>
 		{/each}
 	</nav>
@@ -55,6 +71,11 @@
 		display: flex;
 		gap: 1rem;
 		margin-bottom: 1rem;
+	}
+
+	.sort {
+		font-size: 0.9rem;
+		margin-top: -0.5rem;
 	}
 
 	.filters a[aria-current='page'] {
