@@ -133,7 +133,8 @@ Die Integrationstests brauchen `TEST_DATABASE_URL`. Diese Datenbank wird bei jed
 `paperradar_e2e` und lesen Magic-Links über die Mailpit-API.
 
 Aufbau, Datenmodell, Ranking und Jobs sind in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-beschrieben.
+beschrieben. Zielgruppe, Prinzipien und Ausblick fasst die
+[Produktbeschreibung](docs/PRODUCT.md) zusammen.
 
 ## Konfiguration
 
